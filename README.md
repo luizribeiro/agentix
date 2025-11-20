@@ -1,0 +1,283 @@
+# agentix
+
+> Your AI agents, packaged with Nix
+
+**agentix** is a unified Nix flake for popular AI CLI tools:
+- **codex-cli** - OpenAI Codex CLI
+- **claude-code** - Anthropic's Claude Code CLI
+- **gemini-cli** - Google's Gemini CLI
+
+Inspired by [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) and [claude-code-nix](https://github.com/sadjow/claude-code-nix).
+
+## Features
+
+- ✨ Three AI agents in one flake
+- 🔄 Automatic hourly updates via GitHub Actions
+- 📦 Individual or combined installation
+- 🎯 Multi-platform support (Linux x86_64/ARM64, macOS ARM64)
+- 🔒 Reproducible builds with locked dependencies
+
+## Quick Start
+
+### Install all tools
+
+```bash
+nix profile install github:luizribeiro/agentix
+```
+
+### Install individual tools
+
+```bash
+# Just codex
+nix profile install github:luizribeiro/agentix#codex-cli
+
+# Just claude
+nix profile install github:luizribeiro/agentix#claude-code
+
+# Just gemini
+nix profile install github:luizribeiro/agentix#gemini-cli
+```
+
+### Run without installing
+
+```bash
+# Run codex directly
+nix run github:luizribeiro/agentix#codex
+
+# Run claude directly
+nix run github:luizribeiro/agentix#claude
+
+# Run gemini directly
+nix run github:luizribeiro/agentix#gemini
+```
+
+## Usage in Other Flakes
+
+### Using the overlay
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    ai-cli-tools.url = "github:luizribeiro/agentix";
+  };
+
+  outputs = { self, nixpkgs, ai-cli-tools }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+        overlays = [ ai-cli-tools.overlays.default ];
+      };
+    in {
+      devShells.${system}.default = pkgs.mkShell {
+        packages = with pkgs; [
+          codex-cli
+          claude-code
+          gemini-cli
+        ];
+      };
+    };
+}
+```
+
+### Using packages directly
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    ai-cli-tools.url = "github:luizribeiro/agentix";
+  };
+
+  outputs = { self, nixpkgs, ai-cli-tools }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
+    in {
+      devShells.${system}.default = pkgs.mkShell {
+        packages = [
+          ai-cli-tools.packages.${system}.codex-cli
+          ai-cli-tools.packages.${system}.claude-code
+          ai-cli-tools.packages.${system}.gemini-cli
+        ];
+      };
+    };
+}
+```
+
+## Available Packages
+
+| Package | Binary | Version | License | Description |
+|---------|--------|---------|---------|-------------|
+| `codex-cli` | `codex` | 0.60.1 | Unfree | OpenAI Codex CLI tool |
+| `claude-code` | `claude` | 2.0.47 | Unfree | Anthropic's official CLI for Claude |
+| `gemini-cli` | `gemini` | 0.16.0 | Apache 2.0 | Google's Gemini AI CLI |
+| `default` | All | - | Mixed | Combined package with all three tools |
+
+## Supported Platforms
+
+- `aarch64-darwin` - macOS on Apple Silicon (M1/M2/M3)
+- `aarch64-linux` - Linux on ARM64
+- `x86_64-linux` - Linux on x86_64
+
+## Using direnv
+
+This repository includes a `.envrc` file for automatic development environment loading with [direnv](https://direnv.net/):
+
+```bash
+# Allow direnv to load the flake
+direnv allow
+
+# The development shell will now load automatically when you cd into the directory
+# You'll have access to: nixpkgs-fmt, nix-prefetch-git, nodejs_22, jq
+```
+
+If you don't have direnv installed:
+```bash
+# NixOS
+nix-env -iA nixpkgs.direnv
+
+# With nix profile
+nix profile install nixpkgs#direnv
+
+# Then add to your shell rc (~/.bashrc, ~/.zshrc, etc.)
+eval "$(direnv hook bash)"  # or zsh, fish, etc.
+```
+
+## Development
+
+### Building locally
+
+```bash
+# Build individual packages
+nix build .#codex-cli
+nix build .#claude-code
+nix build .#gemini-cli
+
+# Build all tools
+nix build .#default
+
+# Check flake
+nix flake check
+```
+
+### Development shell
+
+```bash
+nix develop
+```
+
+Includes:
+- `nixpkgs-fmt` - Nix code formatter
+- `nix-prefetch-git` - Git repository prefetcher
+- `nodejs_22` - Node.js for testing
+- `jq` - JSON processor
+
+### Manual updates
+
+The workflow automatically updates packages hourly. To manually update:
+
+#### codex-cli
+
+```bash
+# Get latest version
+LATEST=$(curl -s https://registry.npmjs.org/@openai/codex | jq -r '.["dist-tags"].latest')
+
+# Get hash
+HASH=$(nix-prefetch-url "https://registry.npmjs.org/@openai/codex/-/codex-$LATEST.tgz")
+SRI_HASH=$(nix hash convert --hash-algo sha256 "$HASH")
+
+# Update packages/codex-cli/default.nix
+```
+
+#### claude-code
+
+```bash
+# Get latest version
+LATEST=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code | jq -r '.["dist-tags"].latest')
+
+# Get hash
+HASH=$(nix-prefetch-url "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-$LATEST.tgz")
+SRI_HASH=$(nix hash convert --hash-algo sha256 "$HASH")
+
+# Update packages/claude-code/default.nix
+```
+
+#### gemini-cli
+
+```bash
+# Get latest version
+LATEST=$(curl -s https://registry.npmjs.org/@google/gemini-cli | jq -r '.["dist-tags"].latest')
+
+# Update version in packages/gemini-cli/default.nix
+# Build twice to get correct hashes (source and npmDeps)
+nix build .#gemini-cli  # Will fail but show correct hashes
+```
+
+## Automatic Updates
+
+This flake uses GitHub Actions to automatically check for updates every hour:
+
+1. Fetches latest versions from npm registry
+2. Calculates new hashes for updated packages
+3. Updates package definitions
+4. Runs `nix flake check` to verify builds
+5. Auto-commits and pushes changes if tests pass
+
+See [.github/workflows/update.yml](.github/workflows/update.yml) for details.
+
+## Project Structure
+
+```
+.
+├── flake.nix                    # Main flake definition
+├── flake.lock                   # Locked dependencies
+├── .envrc                       # direnv configuration
+├── packages/
+│   ├── codex-cli/
+│   │   └── default.nix          # codex-cli package
+│   ├── claude-code/
+│   │   └── default.nix          # claude-code package
+│   └── gemini-cli/
+│       └── default.nix          # gemini-cli package
+├── .github/
+│   └── workflows/
+│       └── update.yml           # Auto-update workflow
+└── README.md
+```
+
+## License Notes
+
+- **codex-cli**: Unfree license (requires `config.allowUnfree = true`)
+- **claude-code**: Unfree/Proprietary license (requires `config.allowUnfree = true`)
+- **gemini-cli**: Apache 2.0 (free and open source)
+
+When using this flake, make sure to set `config.allowUnfree = true` in your nixpkgs configuration if you want to use codex-cli or claude-code.
+
+## Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test with `nix flake check`
+5. Submit a pull request
+
+## Related Projects
+
+- [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) - Original codex-cli Nix package
+- [claude-code-nix](https://github.com/sadjow/claude-code-nix) - Original claude-code Nix package
+- [nixpkgs gemini-cli](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ge/gemini-cli/package.nix) - Official nixpkgs gemini-cli
+
+## Acknowledgments
+
+Special thanks to:
+- [@sadjow](https://github.com/sadjow) for the original codex-cli-nix and claude-code-nix implementations
+- The NixOS community for gemini-cli packaging
+- OpenAI, Anthropic, and Google for their amazing AI tools
