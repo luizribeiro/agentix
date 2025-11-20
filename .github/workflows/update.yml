@@ -22,6 +22,10 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
+      - name: Install Nushell
+        run: |
+          nix profile install nixpkgs#nushell
+
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -30,98 +34,47 @@ jobs:
       - name: Update codex-cli
         id: update-codex
         run: |
-          # Fetch latest version from npm
-          LATEST=$(curl -s https://registry.npmjs.org/@openai/codex | jq -r '.["dist-tags"].latest')
-          CURRENT=$(grep 'version = ' packages/codex-cli/default.nix | sed 's/.*"\(.*\)".*/\1/')
+          OUTPUT=$(nu scripts/update-package.nu codex-cli)
+          echo "$OUTPUT"
 
+          # Parse output
+          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
+          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
+          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
-
-          if [ "$CURRENT" != "$LATEST" ]; then
-            echo "Updating codex-cli from $CURRENT to $LATEST"
-
-            # Fetch new hash
-            HASH=$(nix-prefetch-url "https://registry.npmjs.org/@openai/codex/-/codex-$LATEST.tgz")
-            SRI_HASH=$(nix hash convert --hash-algo sha256 "$HASH")
-
-            # Update version and hash
-            sed -i "s/version = \".*\"/version = \"$LATEST\"/" packages/codex-cli/default.nix
-            sed -i "s|hash = \"sha256-.*\"|hash = \"$SRI_HASH\"|" packages/codex-cli/default.nix
-
-            echo "updated=true" >> $GITHUB_OUTPUT
-          else
-            echo "codex-cli is up to date"
-            echo "updated=false" >> $GITHUB_OUTPUT
-          fi
 
       - name: Update claude-code
         id: update-claude
         run: |
-          # Fetch latest version from npm
-          LATEST=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code | jq -r '.["dist-tags"].latest')
-          CURRENT=$(grep 'version = ' packages/claude-code/default.nix | sed 's/.*"\(.*\)".*/\1/')
+          OUTPUT=$(nu scripts/update-package.nu claude-code)
+          echo "$OUTPUT"
 
+          # Parse output
+          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
+          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
+          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
-
-          if [ "$CURRENT" != "$LATEST" ]; then
-            echo "Updating claude-code from $CURRENT to $LATEST"
-
-            # Fetch new hash
-            HASH=$(nix-prefetch-url "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-$LATEST.tgz")
-            SRI_HASH=$(nix hash convert --hash-algo sha256 "$HASH")
-
-            # Update version and hash
-            sed -i "s/version = \".*\"/version = \"$LATEST\"/" packages/claude-code/default.nix
-            sed -i "s|hash = \"sha256-.*\"|hash = \"$SRI_HASH\"|" packages/claude-code/default.nix
-
-            echo "updated=true" >> $GITHUB_OUTPUT
-          else
-            echo "claude-code is up to date"
-            echo "updated=false" >> $GITHUB_OUTPUT
-          fi
 
       - name: Update gemini-cli
         id: update-gemini
         run: |
-          # Fetch latest stable version from npm (not nightly)
-          LATEST=$(curl -s https://registry.npmjs.org/@google/gemini-cli | jq -r '.["dist-tags"].latest')
-          CURRENT=$(grep 'version = ' packages/gemini-cli/default.nix | sed 's/.*"\(.*\)".*/\1/')
+          OUTPUT=$(nu scripts/update-package.nu gemini-cli)
+          echo "$OUTPUT"
 
+          # Parse output
+          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
+          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
+          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
-
-          if [ "$CURRENT" != "$LATEST" ]; then
-            echo "Updating gemini-cli from $CURRENT to $LATEST"
-
-            # Update version first
-            sed -i "s/version = \".*\"/version = \"$LATEST\"/" packages/gemini-cli/default.nix
-
-            # Set fake hashes to trigger rebuild
-            sed -i "s|hash = \"sha256-.*\"|hash = \"sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\"|" packages/gemini-cli/default.nix
-            sed -i "s|npmDepsHash = \"sha256-.*\"|npmDepsHash = \"sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\"|" packages/gemini-cli/default.nix
-
-            # Get source hash
-            SRC_HASH=$(nix build .#gemini-cli --no-link 2>&1 | grep "got:" | awk '{print $2}' || echo "")
-            if [ -z "$SRC_HASH" ]; then
-              echo "Failed to get source hash"
-              exit 1
-            fi
-            sed -i "0,/hash = \"sha256-.*\"/s||hash = \"$SRC_HASH\"|" packages/gemini-cli/default.nix
-
-            # Get npmDepsHash
-            NPM_HASH=$(nix build .#gemini-cli --no-link 2>&1 | grep "got:" | awk '{print $2}' || echo "")
-            if [ -z "$NPM_HASH" ]; then
-              echo "Failed to get npmDepsHash"
-              exit 1
-            fi
-            sed -i "s|npmDepsHash = \"sha256-.*\"|npmDepsHash = \"$NPM_HASH\"|" packages/gemini-cli/default.nix
-
-            echo "updated=true" >> $GITHUB_OUTPUT
-          else
-            echo "gemini-cli is up to date"
-            echo "updated=false" >> $GITHUB_OUTPUT
-          fi
 
       - name: Test builds
         if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true'

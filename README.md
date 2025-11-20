@@ -177,59 +177,41 @@ Includes:
 - `nix-prefetch-git` - Git repository prefetcher
 - `nodejs_22` - Node.js for testing
 - `jq` - JSON processor
+- `nushell` - Shell for running update scripts
 
-### Manual updates
+### Updating packages
 
-The workflow automatically updates packages hourly. To manually update:
-
-#### codex-cli
-
-```bash
-# Get latest version
-LATEST=$(curl -s https://registry.npmjs.org/@openai/codex | jq -r '.["dist-tags"].latest')
-
-# Get hash
-HASH=$(nix-prefetch-url "https://registry.npmjs.org/@openai/codex/-/codex-$LATEST.tgz")
-SRI_HASH=$(nix hash convert --hash-algo sha256 "$HASH")
-
-# Update packages/codex-cli/default.nix
-```
-
-#### claude-code
+The workflow automatically updates packages hourly. To manually update a package, use the provided Nushell script:
 
 ```bash
-# Get latest version
-LATEST=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code | jq -r '.["dist-tags"].latest')
-
-# Get hash
-HASH=$(nix-prefetch-url "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-$LATEST.tgz")
-SRI_HASH=$(nix hash convert --hash-algo sha256 "$HASH")
-
-# Update packages/claude-code/default.nix
+# Update a specific package
+./scripts/update-package.nu codex-cli
+./scripts/update-package.nu claude-code
+./scripts/update-package.nu gemini-cli
 ```
 
-#### gemini-cli
+The script will:
+1. Fetch the latest version from npm
+2. Compare with the current version
+3. If different, calculate new hashes and update the package file
+4. Output whether the package was updated
 
-```bash
-# Get latest version
-LATEST=$(curl -s https://registry.npmjs.org/@google/gemini-cli | jq -r '.["dist-tags"].latest')
+**How it works:**
+- For `codex-cli` and `claude-code` (FOD packages): Fetches tarball hash using `nix-prefetch-url`
+- For `gemini-cli` (buildNpmPackage): Builds twice to extract source and npmDeps hashes from error output
 
-# Update version in packages/gemini-cli/default.nix
-# Build twice to get correct hashes (source and npmDeps)
-nix build .#gemini-cli  # Will fail but show correct hashes
-```
+See [scripts/update-package.nu](scripts/update-package.nu) for implementation details.
 
 ## Automatic Updates
 
 This flake uses GitHub Actions to automatically check for updates every hour:
 
-1. Fetches latest versions from npm registry
-2. Calculates new hashes for updated packages
-3. Updates package definitions
-4. Runs `nix flake check` to verify builds
-5. Auto-commits and pushes changes if tests pass
+1. Runs `scripts/update-package.nu` for each package
+2. The script fetches latest versions from npm and updates package files
+3. Runs `nix flake check` to verify builds
+4. Auto-commits and pushes changes if tests pass
 
-See [.github/workflows/update.yml](.github/workflows/update.yml) for details.
+The update logic is centralized in [scripts/update-package.nu](scripts/update-package.nu) and called by [.github/workflows/update.yml](.github/workflows/update.yml).
 
 ## Project Structure
 
@@ -238,6 +220,8 @@ See [.github/workflows/update.yml](.github/workflows/update.yml) for details.
 ├── flake.nix                    # Main flake definition
 ├── flake.lock                   # Locked dependencies
 ├── .envrc                       # direnv configuration
+├── scripts/
+│   └── update-package.nu        # Package update script (Nushell)
 ├── packages/
 │   ├── codex-cli/
 │   │   └── default.nix          # codex-cli package

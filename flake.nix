@@ -76,6 +76,7 @@
             nix-prefetch-git
             nodejs_22
             jq
+            nushell
           ];
 
           shellHook = ''
@@ -84,8 +85,14 @@
             echo "Available commands:"
             echo "  - nixpkgs-fmt: Format Nix files"
             echo "  - nix-prefetch-git: Prefetch git repositories"
+            echo "  - nu: Nushell for running update scripts"
             echo ""
-            echo "Build packages with:"
+            echo "Update packages:"
+            echo "  ./scripts/update-package.nu codex-cli"
+            echo "  ./scripts/update-package.nu claude-code"
+            echo "  ./scripts/update-package.nu gemini-cli"
+            echo ""
+            echo "Build packages:"
             echo "  nix build .#codex-cli"
             echo "  nix build .#claude-code"
             echo "  nix build .#gemini-cli"
