@@ -48,7 +48,7 @@ stdenv.mkDerivation {
 
     mkdir -p $out/bin
     makeWrapper ${nodejs_22}/bin/node $out/bin/claude \
-      --add-flags "$out/lib/node_modules/@anthropic-ai/claude-code/bundle/index.js" \
+      --add-flags "$out/lib/node_modules/@anthropic-ai/claude-code/cli.js" \
       --set NODE_PATH "$out/lib/node_modules" \
       --set CLAUDE_CLI_DISABLE_UPDATE_CHECK "1" \
       --set SKIP_CLAUDE_UPDATE_CHECK "1"
