@@ -1,5 +1,5 @@
 {
-  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli)";
+  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, crush)";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -12,6 +12,7 @@
         codex-cli = final.callPackage ./packages/codex-cli { };
         claude-code = final.callPackage ./packages/claude-code { };
         gemini-cli = final.callPackage ./packages/gemini-cli { };
+        crush = final.callPackage ./packages/crush { };
       };
 
       supportedSystems = [
@@ -36,6 +37,7 @@
           codex-cli = pkgs.codex-cli;
           claude-code = pkgs.claude-code;
           gemini-cli = pkgs.gemini-cli;
+          crush = pkgs.crush;
 
           default = pkgs.buildEnv {
             name = "agentix";
@@ -43,6 +45,7 @@
               pkgs.codex-cli
               pkgs.claude-code
               pkgs.gemini-cli
+              pkgs.crush
             ];
             meta = {
               description = "agentix - Your AI agents, packaged with Nix";
@@ -65,6 +68,11 @@
           gemini = {
             type = "app";
             program = "${pkgs.gemini-cli}/bin/gemini";
+          };
+
+          crush = {
+            type = "app";
+            program = "${pkgs.crush}/bin/crush";
           };
 
           default = self.apps.${system}.claude;
@@ -91,12 +99,14 @@
             echo "  ./scripts/update-package.nu codex-cli"
             echo "  ./scripts/update-package.nu claude-code"
             echo "  ./scripts/update-package.nu gemini-cli"
+            echo "  ./scripts/update-package.nu crush"
             echo ""
             echo "Build packages:"
             echo "  nix build .#codex-cli"
             echo "  nix build .#claude-code"
             echo "  nix build .#gemini-cli"
-            echo "  nix build .#default  # agentix with all three tools"
+            echo "  nix build .#crush"
+            echo "  nix build .#default  # agentix with all four tools"
           '';
         };
       });

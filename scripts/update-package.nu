@@ -23,20 +23,29 @@ def main [package: string] {
             file: "packages/gemini-cli/default.nix",
             type: "buildNpmPackage"
         },
+        "crush" => {
+            github_owner: "charmbracelet",
+            github_repo: "crush",
+            file: "packages/crush/default.nix",
+            type: "buildGoModule"
+        },
         _ => {
             print $"Error: Unknown package '($package)'"
-            print "Valid packages: codex-cli, claude-code, gemini-cli"
+            print "Valid packages: codex-cli, claude-code, gemini-cli, crush"
             exit 1
         }
     }
 
-    # Fetch latest version from npm
-    print $"Fetching latest version for ($config.npm_name)..."
-    let registry_url = $"https://registry.npmjs.org/($config.npm_name)"
-    let latest_version = (
-        http get $registry_url
-        | get dist-tags.latest
-    )
+    # Fetch latest version
+    let latest_version = if $config.type == "buildGoModule" {
+        print $"Fetching latest version from GitHub ($config.github_owner)/($config.github_repo)..."
+        let api_url = $"https://api.github.com/repos/($config.github_owner)/($config.github_repo)/releases/latest"
+        http get $api_url | get tag_name | str replace 'v' ''
+    } else {
+        print $"Fetching latest version for ($config.npm_name)..."
+        let registry_url = $"https://registry.npmjs.org/($config.npm_name)"
+        http get $registry_url | get dist-tags.latest
+    }
 
     # Get current version from package file
     let current_version = (
@@ -63,8 +72,10 @@ def main [package: string] {
     # Update based on package type
     if $config.type == "fod" {
         update_fod_package $config $latest_version
-    } else {
+    } else if $config.type == "buildNpmPackage" {
         update_buildnpm_package $config $latest_version
+    } else {
+        update_buildgo_package $config $latest_version
     }
 
     # Update README.md with new version
@@ -123,10 +134,11 @@ def update_buildnpm_package [config: record, version: string] {
     let src_hash = (
         $src_result.stderr
         | lines
-        | find "got:"
+        | where $it =~ "got:"
         | first
-        | parse "got:    {hash}"
-        | get hash.0
+        | str trim
+        | split row "got:"
+        | get 1
         | str trim
     )
 
@@ -149,10 +161,11 @@ def update_buildnpm_package [config: record, version: string] {
     let npm_hash = (
         $npm_result.stderr
         | lines
-        | find "got:"
+        | where $it =~ "got:"
         | first
-        | parse "got:    {hash}"
-        | get hash.0
+        | str trim
+        | split row "got:"
+        | get 1
         | str trim
     )
 
@@ -170,6 +183,76 @@ def update_buildnpm_package [config: record, version: string] {
     $updated3 | save -f $config.file
 }
 
+# Update a buildGoModule package (crush)
+def update_buildgo_package [config: record, version: string] {
+    # Update version and set fake hashes
+    let content = open $config.file
+    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+    let updated = (
+        $content
+        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
+        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
+        | str replace -r 'vendorHash = "sha256-[^"]*"' $'vendorHash = "($fake_hash)"'
+    )
+
+    $updated | save -f $config.file
+
+    # Build to get source hash
+    print "Building to get source hash..."
+    let src_result = (nix build .#crush --no-link | complete)
+    let src_hash = (
+        $src_result.stderr
+        | lines
+        | where $it =~ "got:"
+        | first
+        | str trim
+        | split row "got:"
+        | get 1
+        | str trim
+    )
+
+    if ($src_hash | is-empty) {
+        print "Error: Could not extract source hash"
+        exit 1
+    }
+
+    # Update source hash
+    let content2 = open $config.file
+    let updated2 = (
+        $content2
+        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($src_hash)"'
+    )
+    $updated2 | save -f $config.file
+
+    # Build to get vendorHash
+    print "Building to get vendorHash..."
+    let vendor_result = (nix build .#crush --no-link | complete)
+    let vendor_hash = (
+        $vendor_result.stderr
+        | lines
+        | where $it =~ "got:"
+        | first
+        | str trim
+        | split row "got:"
+        | get 1
+        | str trim
+    )
+
+    if ($vendor_hash | is-empty) {
+        print "Error: Could not extract vendorHash"
+        exit 1
+    }
+
+    # Update vendorHash
+    let content3 = open $config.file
+    let updated3 = (
+        $content3
+        | str replace -r 'vendorHash = "sha256-[^"]*"' $'vendorHash = "($vendor_hash)"'
+    )
+    $updated3 | save -f $config.file
+}
+
 # Update README.md with new version in the packages table
 def update_readme [package: string, version: string] {
     let readme_path = "README.md"
@@ -179,6 +262,7 @@ def update_readme [package: string, version: string] {
         "codex-cli" => '| `codex-cli` | `codex` |',
         "claude-code" => '| `claude-code` | `claude` |',
         "gemini-cli" => '| `gemini-cli` | `gemini` |',
+        "crush" => '| `crush` | `crush` |',
         _ => {
             print $"Warning: Unknown package ($package) for README update"
             return

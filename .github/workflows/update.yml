@@ -76,14 +76,29 @@ jobs:
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
 
+      - name: Update crush
+        id: update-crush
+        run: |
+          OUTPUT=$(nu scripts/update-package.nu crush)
+          echo "$OUTPUT"
+
+          # Parse output
+          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
+          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
+          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+
       - name: Test builds
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true'
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true'
         run: |
           echo "Testing package builds..."
           nix flake check --print-build-logs
 
       - name: Commit and push changes
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true'
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true'
         run: |
           git add packages/ README.md
 
@@ -99,6 +114,10 @@ jobs:
 
           if [ "${{ steps.update-gemini.outputs.updated }}" == "true" ]; then
             COMMIT_MSG="$COMMIT_MSG\n- gemini-cli: ${{ steps.update-gemini.outputs.current }} → ${{ steps.update-gemini.outputs.latest }}"
+          fi
+
+          if [ "${{ steps.update-crush.outputs.updated }}" == "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG\n- crush: ${{ steps.update-crush.outputs.current }} → ${{ steps.update-crush.outputs.latest }}"
           fi
 
           git commit -m "$(echo -e "$COMMIT_MSG")"

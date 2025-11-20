@@ -6,12 +6,13 @@
 - **codex-cli** - OpenAI Codex CLI
 - **claude-code** - Anthropic's Claude Code CLI
 - **gemini-cli** - Google's Gemini CLI
+- **crush** - Charmbracelet's Crush AI coding agent
 
 Inspired by [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) and [claude-code-nix](https://github.com/sadjow/claude-code-nix).
 
 ## Features
 
-- ✨ Three AI agents in one flake
+- ✨ Four AI agents in one flake
 - 🔄 Automatic hourly updates via GitHub Actions
 - 📦 Individual or combined installation
 - 🎯 Multi-platform support (Linux x86_64/ARM64, macOS ARM64)
@@ -36,6 +37,9 @@ nix profile install github:luizribeiro/agentix#claude-code
 
 # Just gemini
 nix profile install github:luizribeiro/agentix#gemini-cli
+
+# Just crush
+nix profile install github:luizribeiro/agentix#crush
 ```
 
 ### Run without installing
@@ -49,6 +53,9 @@ nix run github:luizribeiro/agentix#claude
 
 # Run gemini directly
 nix run github:luizribeiro/agentix#gemini
+
+# Run crush directly
+nix run github:luizribeiro/agentix#crush
 ```
 
 ## Usage in Other Flakes
@@ -76,6 +83,7 @@ nix run github:luizribeiro/agentix#gemini
           codex-cli
           claude-code
           gemini-cli
+          crush
         ];
       };
     };
@@ -104,6 +112,7 @@ nix run github:luizribeiro/agentix#gemini
           agentix.packages.${system}.codex-cli
           agentix.packages.${system}.claude-code
           agentix.packages.${system}.gemini-cli
+          agentix.packages.${system}.crush
         ];
       };
     };
@@ -117,7 +126,8 @@ nix run github:luizribeiro/agentix#gemini
 | `codex-cli` | `codex` | 0.60.1 | Unfree | OpenAI Codex CLI tool |
 | `claude-code` | `claude` | 2.0.47 | Unfree | Anthropic's official CLI for Claude |
 | `gemini-cli` | `gemini` | 0.16.0 | Apache 2.0 | Google's Gemini AI CLI |
-| `default` | All | - | Mixed | Combined package with all three tools |
+| `crush` | `crush` | 0.18.1 | MIT | Charmbracelet's AI coding agent |
+| `default` | All | - | Mixed | Combined package with all four tools |
 
 ## Supported Platforms
 
@@ -158,6 +168,7 @@ eval "$(direnv hook bash)"  # or zsh, fish, etc.
 nix build .#codex-cli
 nix build .#claude-code
 nix build .#gemini-cli
+nix build .#crush
 
 # Build all tools
 nix build .#default
@@ -188,6 +199,7 @@ The workflow automatically updates packages hourly. To manually update a package
 ./scripts/update-package.nu codex-cli
 ./scripts/update-package.nu claude-code
 ./scripts/update-package.nu gemini-cli
+./scripts/update-package.nu crush
 ```
 
 The script will:
@@ -199,6 +211,7 @@ The script will:
 **How it works:**
 - For `codex-cli` and `claude-code` (FOD packages): Fetches tarball hash using `nix-prefetch-url`
 - For `gemini-cli` (buildNpmPackage): Builds twice to extract source and npmDeps hashes from error output
+- For `crush` (buildGoModule): Fetches from GitHub and extracts vendor hash from build output
 
 See [scripts/update-package.nu](scripts/update-package.nu) for implementation details.
 
@@ -227,8 +240,10 @@ The update logic is centralized in [scripts/update-package.nu](scripts/update-pa
 │   │   └── default.nix          # codex-cli package
 │   ├── claude-code/
 │   │   └── default.nix          # claude-code package
-│   └── gemini-cli/
-│       └── default.nix          # gemini-cli package
+│   ├── gemini-cli/
+│   │   └── default.nix          # gemini-cli package
+│   └── crush/
+│       └── default.nix          # crush package
 ├── .github/
 │   └── workflows/
 │       └── update.yml           # Auto-update workflow
@@ -240,6 +255,7 @@ The update logic is centralized in [scripts/update-package.nu](scripts/update-pa
 - **codex-cli**: Unfree license (requires `config.allowUnfree = true`)
 - **claude-code**: Unfree/Proprietary license (requires `config.allowUnfree = true`)
 - **gemini-cli**: Apache 2.0 (free and open source)
+- **crush**: MIT (free and open source)
 
 When using this flake, make sure to set `config.allowUnfree = true` in your nixpkgs configuration if you want to use codex-cli or claude-code.
 
