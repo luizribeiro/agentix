@@ -67,6 +67,9 @@ def main [package: string] {
         update_buildnpm_package $config $latest_version
     }
 
+    # Update README.md with new version
+    update_readme $package $latest_version
+
     print $"✓ Updated ($package) to ($latest_version)"
     print "updated=true"
     print $"current=($current_version)"
@@ -92,8 +95,8 @@ def update_fod_package [config: record, version: string] {
     let content = open $config.file
     let updated = (
         $content
-        | str replace $'version = ".*"' $'version = "($version)"'
-        | str replace $'hash = "sha256-.*"' $'hash = "($sri_hash)"'
+        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
+        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($sri_hash)"'
     )
 
     $updated | save -f $config.file
@@ -107,9 +110,9 @@ def update_buildnpm_package [config: record, version: string] {
 
     let updated = (
         $content
-        | str replace $'version = ".*"' $'version = "($version)"'
-        | str replace $'hash = "sha256-.*"' $'hash = "($fake_hash)"'
-        | str replace $'npmDepsHash = "sha256-.*"' $'npmDepsHash = "($fake_hash)"'
+        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
+        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
+        | str replace -r 'npmDepsHash = "sha256-[^"]*"' $'npmDepsHash = "($fake_hash)"'
     )
 
     $updated | save -f $config.file
@@ -136,7 +139,7 @@ def update_buildnpm_package [config: record, version: string] {
     let content2 = open $config.file
     let updated2 = (
         $content2
-        | str replace -m $'hash = "sha256-.*"' $'hash = "($src_hash)"'
+        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($src_hash)"'
     )
     $updated2 | save -f $config.file
 
@@ -162,7 +165,42 @@ def update_buildnpm_package [config: record, version: string] {
     let content3 = open $config.file
     let updated3 = (
         $content3
-        | str replace $'npmDepsHash = "sha256-.*"' $'npmDepsHash = "($npm_hash)"'
+        | str replace -r 'npmDepsHash = "sha256-[^"]*"' $'npmDepsHash = "($npm_hash)"'
     )
     $updated3 | save -f $config.file
+}
+
+# Update README.md with new version in the packages table
+def update_readme [package: string, version: string] {
+    let readme_path = "README.md"
+
+    # Map package names to their README table row patterns
+    let pattern = match $package {
+        "codex-cli" => '| `codex-cli` | `codex` |',
+        "claude-code" => '| `claude-code` | `claude` |',
+        "gemini-cli" => '| `gemini-cli` | `gemini` |',
+        _ => {
+            print $"Warning: Unknown package ($package) for README update"
+            return
+        }
+    }
+
+    print $"Updating README.md version for ($package)..."
+
+    let content = open $readme_path
+    let updated = (
+        $content
+        | lines
+        | each { |line|
+            if ($line | str starts-with $pattern) {
+                # Replace the version number (third column) in the table row
+                $line | str replace -r '\| ([0-9]+\.[0-9]+\.[0-9]+) \|' $'| ($version) |'
+            } else {
+                $line
+            }
+        }
+        | str join (char newline)
+    )
+
+    $updated | save -f $readme_path
 }

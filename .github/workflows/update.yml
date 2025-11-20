@@ -85,7 +85,7 @@ jobs:
       - name: Commit and push changes
         if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true'
         run: |
-          git add packages/
+          git add packages/ README.md
 
           COMMIT_MSG="chore: update packages"
 
