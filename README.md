@@ -59,16 +59,16 @@ nix run github:luizribeiro/agentix#gemini
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    ai-cli-tools.url = "github:luizribeiro/agentix";
+    agentix.url = "github:luizribeiro/agentix";
   };
 
-  outputs = { self, nixpkgs, ai-cli-tools }:
+  outputs = { self, nixpkgs, agentix }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
-        overlays = [ ai-cli-tools.overlays.default ];
+        overlays = [ agentix.overlays.default ];
       };
     in {
       devShells.${system}.default = pkgs.mkShell {
@@ -88,10 +88,10 @@ nix run github:luizribeiro/agentix#gemini
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    ai-cli-tools.url = "github:luizribeiro/agentix";
+    agentix.url = "github:luizribeiro/agentix";
   };
 
-  outputs = { self, nixpkgs, ai-cli-tools }:
+  outputs = { self, nixpkgs, agentix }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -101,9 +101,9 @@ nix run github:luizribeiro/agentix#gemini
     in {
       devShells.${system}.default = pkgs.mkShell {
         packages = [
-          ai-cli-tools.packages.${system}.codex-cli
-          ai-cli-tools.packages.${system}.claude-code
-          ai-cli-tools.packages.${system}.gemini-cli
+          agentix.packages.${system}.codex-cli
+          agentix.packages.${system}.claude-code
+          agentix.packages.${system}.gemini-cli
         ];
       };
     };
