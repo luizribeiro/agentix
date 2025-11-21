@@ -51,7 +51,8 @@ stdenv.mkDerivation {
       --add-flags "$out/lib/node_modules/@anthropic-ai/claude-code/cli.js" \
       --set NODE_PATH "$out/lib/node_modules" \
       --set CLAUDE_CLI_DISABLE_UPDATE_CHECK "1" \
-      --set SKIP_CLAUDE_UPDATE_CHECK "1"
+      --set SKIP_CLAUDE_UPDATE_CHECK "1" \
+      --set DISABLE_AUTOUPDATER "1"
 
     runHook postInstall
   '';
