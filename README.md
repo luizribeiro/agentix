@@ -126,7 +126,7 @@ nix run github:luizribeiro/agentix#crush
 | `codex-cli` | `codex` | 0.63.0 | Unfree | OpenAI Codex CLI tool |
 | `claude-code` | `claude` | 2.0.51 | Unfree | Anthropic's official CLI for Claude |
 | `gemini-cli` | `gemini` | 0.17.1 | Apache 2.0 | Google's Gemini AI CLI |
-| `crush` | `crush` | 0.18.5 | MIT | Charmbracelet's AI coding agent |
+| `crush` | `crush` | 0.18.6 | MIT | Charmbracelet's AI coding agent |
 | `default` | All | - | Mixed | Combined package with all four tools |
 
 ## Supported Platforms
