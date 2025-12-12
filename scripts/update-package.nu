@@ -69,13 +69,22 @@ def main [package: string] {
 
     print $"↻ Updating ($package) from ($current_version) to ($latest_version)"
 
+    # Save original file content for rollback
+    let original_content = open $config.file
+
     # Update based on package type
-    if $config.type == "fod" {
+    let update_result = if $config.type == "fod" {
         update_fod_package $config $latest_version
     } else if $config.type == "buildNpmPackage" {
-        update_buildnpm_package $config $latest_version
+        update_buildnpm_package $config $latest_version $original_content
     } else {
-        update_buildgo_package $config $latest_version
+        update_buildgo_package $config $latest_version $original_content
+    }
+
+    if not $update_result {
+        print $"⚠ Could not update ($package) - build requirements not met"
+        print "updated=false"
+        return
     }
 
     # Update README.md with new version
@@ -88,7 +97,7 @@ def main [package: string] {
 }
 
 # Update a Fixed Output Derivation package (codex-cli, claude-code)
-def update_fod_package [config: record, version: string] {
+def update_fod_package [config: record, version: string]: nothing -> bool {
     # Fetch tarball hash
     let tarball_url = $"https://registry.npmjs.org/($config.npm_name)/-/(($config.npm_name | split row '/' | last))-($version).tgz"
     print $"Fetching hash for ($tarball_url)..."
@@ -96,7 +105,7 @@ def update_fod_package [config: record, version: string] {
     let hash_output = (nix-prefetch-url $tarball_url | complete)
     if $hash_output.exit_code != 0 {
         print $"Error fetching hash: ($hash_output.stderr)"
-        exit 1
+        return false
     }
 
     let nix_hash = $hash_output.stdout | str trim
@@ -111,10 +120,11 @@ def update_fod_package [config: record, version: string] {
     )
 
     $updated | save -f $config.file
+    true
 }
 
 # Update a buildNpmPackage (gemini-cli)
-def update_buildnpm_package [config: record, version: string] {
+def update_buildnpm_package [config: record, version: string, original_content: string]: nothing -> bool {
     # Update version and set fake hashes
     let content = open $config.file
     let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -131,10 +141,21 @@ def update_buildnpm_package [config: record, version: string] {
     # Build to get source hash
     print "Building to get source hash..."
     let src_result = (nix build .#gemini-cli --no-link | complete)
-    let src_hash = (
+    let src_got_lines = (
         $src_result.stderr
         | lines
         | where $it =~ "got:"
+    )
+
+    if ($src_got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch. Build output:"
+        print $src_result.stderr
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let src_hash = (
+        $src_got_lines
         | first
         | str trim
         | split row "got:"
@@ -144,7 +165,8 @@ def update_buildnpm_package [config: record, version: string] {
 
     if ($src_hash | is-empty) {
         print "Error: Could not extract source hash"
-        exit 1
+        $original_content | save -f $config.file
+        return false
     }
 
     # Update source hash
@@ -158,10 +180,21 @@ def update_buildnpm_package [config: record, version: string] {
     # Build to get npmDepsHash
     print "Building to get npmDepsHash..."
     let npm_result = (nix build .#gemini-cli --no-link | complete)
-    let npm_hash = (
+    let npm_got_lines = (
         $npm_result.stderr
         | lines
         | where $it =~ "got:"
+    )
+
+    if ($npm_got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch. Build output:"
+        print $npm_result.stderr
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let npm_hash = (
+        $npm_got_lines
         | first
         | str trim
         | split row "got:"
@@ -171,7 +204,8 @@ def update_buildnpm_package [config: record, version: string] {
 
     if ($npm_hash | is-empty) {
         print "Error: Could not extract npmDepsHash"
-        exit 1
+        $original_content | save -f $config.file
+        return false
     }
 
     # Update npmDepsHash
@@ -181,10 +215,11 @@ def update_buildnpm_package [config: record, version: string] {
         | str replace -r 'npmDepsHash = "sha256-[^"]*"' $'npmDepsHash = "($npm_hash)"'
     )
     $updated3 | save -f $config.file
+    true
 }
 
 # Update a buildGoModule package (crush)
-def update_buildgo_package [config: record, version: string] {
+def update_buildgo_package [config: record, version: string, original_content: string]: nothing -> bool {
     # Update version and set fake hashes
     let content = open $config.file
     let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -201,10 +236,21 @@ def update_buildgo_package [config: record, version: string] {
     # Build to get source hash
     print "Building to get source hash..."
     let src_result = (nix build .#crush --no-link | complete)
-    let src_hash = (
+    let src_got_lines = (
         $src_result.stderr
         | lines
         | where $it =~ "got:"
+    )
+
+    if ($src_got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch. Build output:"
+        print $src_result.stderr
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let src_hash = (
+        $src_got_lines
         | first
         | str trim
         | split row "got:"
@@ -214,7 +260,8 @@ def update_buildgo_package [config: record, version: string] {
 
     if ($src_hash | is-empty) {
         print "Error: Could not extract source hash"
-        exit 1
+        $original_content | save -f $config.file
+        return false
     }
 
     # Update source hash
@@ -228,10 +275,21 @@ def update_buildgo_package [config: record, version: string] {
     # Build to get vendorHash
     print "Building to get vendorHash..."
     let vendor_result = (nix build .#crush --no-link | complete)
-    let vendor_hash = (
+    let vendor_got_lines = (
         $vendor_result.stderr
         | lines
         | where $it =~ "got:"
+    )
+
+    if ($vendor_got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch. Build output:"
+        print $vendor_result.stderr
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let vendor_hash = (
+        $vendor_got_lines
         | first
         | str trim
         | split row "got:"
@@ -241,7 +299,8 @@ def update_buildgo_package [config: record, version: string] {
 
     if ($vendor_hash | is-empty) {
         print "Error: Could not extract vendorHash"
-        exit 1
+        $original_content | save -f $config.file
+        return false
     }
 
     # Update vendorHash
@@ -251,6 +310,7 @@ def update_buildgo_package [config: record, version: string] {
         | str replace -r 'vendorHash = "sha256-[^"]*"' $'vendorHash = "($vendor_hash)"'
     )
     $updated3 | save -f $config.file
+    true
 }
 
 # Update README.md with new version in the packages table
