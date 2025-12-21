@@ -6,7 +6,7 @@
 }:
 
 let
-  version = "0.76.0";
+  version = "0.77.0";
   pname = "codex-cli";
 in
 stdenv.mkDerivation {
@@ -14,7 +14,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@openai/codex/-/codex-${version}.tgz";
-    hash = "sha256-4TJXiF9Nn6Z2ex9Uu9N/BE0yTorQlgL3OVyz1d7WsbM=";
+    hash = "sha256-ew9ouxfZKo3w0AghcV1H8kh1LDacZq0kENS69c8hAGo=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
