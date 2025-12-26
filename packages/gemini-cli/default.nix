@@ -11,16 +11,16 @@
 
 buildNpmPackage (finalAttrs: {
   pname = "gemini-cli";
-  version = "0.22.2";
+  version = "0.22.3";
 
   src = fetchFromGitHub {
     owner = "google-gemini";
     repo = "gemini-cli";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-wVIGMkft/hamsuyJH+Ku8vIAZ2ITMfH9LqmtUIP8xN0=";
+    hash = "sha256-MrOVm73OpB3mhSqzK26szKMPmj3/SY43kKQ60mKDtx0=";
   };
 
-  npmDepsHash = "sha256-gyv2yVTNPuwEiWDXfYr21wc+Sii5ac8nRE/04KkPmJg=";
+  npmDepsHash = "sha256-I5Uqqg3PDm8Gyg2kBShFA3F+u991+k+sXRTi0mQ3P3Q=";
 
   nativeBuildInputs = [
     jq
