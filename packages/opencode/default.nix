@@ -1,0 +1,150 @@
+{ lib
+, stdenvNoCC
+, bun
+, fetchFromGitHub
+, fzf
+, makeBinaryWrapper
+, ripgrep
+, installShellFiles
+, callPackage
+}:
+
+let
+  models-dev = callPackage ./models-dev.nix { };
+in
+stdenvNoCC.mkDerivation (finalAttrs: {
+  pname = "opencode";
+  version = "1.1.23";
+
+  src = fetchFromGitHub {
+    owner = "anomalyco";
+    repo = "opencode";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-cvz4HO5vNwA3zWx7zdVfs59Z7vD/00+MMCDbLU5WKpM=";
+  };
+
+  node_modules = stdenvNoCC.mkDerivation {
+    pname = "${finalAttrs.pname}-node_modules";
+    inherit (finalAttrs) version src;
+
+    impureEnvVars = lib.fetchers.proxyImpureEnvVars ++ [
+      "GIT_PROXY_COMMAND"
+      "SOCKS_SERVER"
+    ];
+
+    nativeBuildInputs = [ bun ];
+
+    dontConfigure = true;
+
+    buildPhase = ''
+      runHook preBuild
+
+      export HOME=$TMPDIR
+
+      bun install \
+        --cpu="*" \
+        --frozen-lockfile \
+        --ignore-scripts \
+        --no-progress \
+        --os="*"
+
+      bun --bun ./nix/scripts/canonicalize-node-modules.ts
+      bun --bun ./nix/scripts/normalize-bun-binaries.ts
+
+      runHook postBuild
+    '';
+
+    installPhase = ''
+      runHook preInstall
+
+      mkdir -p $out
+      find . -type d -name node_modules -exec cp -R --parents {} $out \;
+
+      runHook postInstall
+    '';
+
+    dontFixup = true;
+
+    outputHash = "sha256-ojbTZBWM353NLMMHckMjFf+k6TpeOoF/yeQR9dq0nNo=";
+    outputHashAlgo = "sha256";
+    outputHashMode = "recursive";
+  };
+
+  nativeBuildInputs = [
+    bun
+    installShellFiles
+    makeBinaryWrapper
+  ];
+
+  patches = [
+    ./relax-bun-version-check.patch
+    ./remove-special-and-windows-build-targets.patch
+  ];
+
+  configurePhase = ''
+    runHook preConfigure
+
+    cp -R ${finalAttrs.node_modules}/. .
+
+    runHook postConfigure
+  '';
+
+  env.MODELS_DEV_API_JSON = "${models-dev}/dist/_api.json";
+  env.OPENCODE_VERSION = finalAttrs.version;
+  env.OPENCODE_CHANNEL = "stable";
+
+  preBuild = ''
+    export HOME=$TMPDIR
+
+    chmod -R u+w ./packages/opencode/node_modules
+    pushd ./packages/opencode/node_modules/@opentui/
+      for pkg in ../../../../node_modules/.bun/@opentui+core-*; do
+        linkName=$(basename "$pkg" | sed 's/@.*+\(.*\)@.*/\1/')
+        ln -sf "$pkg/node_modules/@opentui/$linkName" "$linkName"
+      done
+    popd
+  '';
+
+  buildPhase = ''
+    runHook preBuild
+
+    cd ./packages/opencode
+    bun --bun ./script/build.ts --single --skip-install
+    bun --bun ./script/schema.ts schema.json
+
+    runHook postBuild
+  '';
+
+  installPhase = ''
+    runHook preInstall
+
+    install -Dm755 dist/opencode-*/bin/opencode $out/bin/opencode
+    install -Dm644 schema.json $out/share/opencode/schema.json
+
+    runHook postInstall
+  '';
+
+  postInstall = lib.optionalString (stdenvNoCC.buildPlatform.canExecute stdenvNoCC.hostPlatform) ''
+    installShellCompletion --cmd opencode \
+      --bash <($out/bin/opencode completion)
+  '';
+
+  postFixup = ''
+    wrapProgram $out/bin/opencode \
+     --prefix PATH : ${lib.makeBinPath [ fzf ripgrep ]}
+  '';
+
+  meta = with lib; {
+    description = "AI coding agent built for the terminal";
+    homepage = "https://github.com/anomalyco/opencode";
+    license = licenses.mit;
+    sourceProvenance = with sourceTypes; [ fromSource ];
+    platforms = [
+      "aarch64-linux"
+      "x86_64-linux"
+      "aarch64-darwin"
+      "x86_64-darwin"
+    ];
+    mainProgram = "opencode";
+  };
+})

@@ -13,6 +13,7 @@
         claude-code = final.callPackage ./packages/claude-code { };
         gemini-cli = final.callPackage ./packages/gemini-cli { };
         crush = final.callPackage ./packages/crush { };
+        opencode = final.callPackage ./packages/opencode { };
       };
 
       supportedSystems = [
@@ -38,6 +39,7 @@
           claude-code = pkgs.claude-code;
           gemini-cli = pkgs.gemini-cli;
           crush = pkgs.crush;
+          opencode = pkgs.opencode;
 
           default = pkgs.buildEnv {
             name = "agentix";
@@ -46,6 +48,7 @@
               pkgs.claude-code
               pkgs.gemini-cli
               pkgs.crush
+              pkgs.opencode
             ];
             meta = {
               description = "agentix - Your AI agents, packaged with Nix";
@@ -75,6 +78,11 @@
             program = "${pkgs.crush}/bin/crush";
           };
 
+          opencode = {
+            type = "app";
+            program = "${pkgs.opencode}/bin/opencode";
+          };
+
           default = self.apps.${system}.claude;
         };
 
@@ -100,13 +108,15 @@
             echo "  ./scripts/update-package.nu claude-code"
             echo "  ./scripts/update-package.nu gemini-cli"
             echo "  ./scripts/update-package.nu crush"
+            echo "  ./scripts/update-package.nu opencode"
             echo ""
             echo "Build packages:"
             echo "  nix build .#codex-cli"
             echo "  nix build .#claude-code"
             echo "  nix build .#gemini-cli"
             echo "  nix build .#crush"
-            echo "  nix build .#default  # agentix with all four tools"
+            echo "  nix build .#opencode"
+            echo "  nix build .#default  # agentix with all five tools"
           '';
         };
       });

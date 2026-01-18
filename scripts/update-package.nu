@@ -29,15 +29,21 @@ def main [package: string] {
             file: "packages/crush/default.nix",
             type: "buildGoModule"
         },
+        "opencode" => {
+            github_owner: "anomalyco",
+            github_repo: "opencode",
+            file: "packages/opencode/default.nix",
+            type: "bunFod"
+        },
         _ => {
             print $"Error: Unknown package '($package)'"
-            print "Valid packages: codex-cli, claude-code, gemini-cli, crush"
+            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode"
             exit 1
         }
     }
 
     # Fetch latest version
-    let latest_version = if $config.type == "buildGoModule" {
+    let latest_version = if $config.type == "buildGoModule" or $config.type == "bunFod" {
         print $"Fetching latest version from GitHub ($config.github_owner)/($config.github_repo)..."
         let api_url = $"https://api.github.com/repos/($config.github_owner)/($config.github_repo)/releases/latest"
         http get $api_url | get tag_name | str replace 'v' ''
@@ -77,8 +83,10 @@ def main [package: string] {
         update_fod_package $config $latest_version
     } else if $config.type == "buildNpmPackage" {
         update_buildnpm_package $config $latest_version $original_content
-    } else {
+    } else if $config.type == "buildGoModule" {
         update_buildgo_package $config $latest_version $original_content
+    } else {
+        update_bunfod_package $config $latest_version $original_content
     }
 
     if not $update_result {
@@ -313,6 +321,101 @@ def update_buildgo_package [config: record, version: string, original_content: s
     true
 }
 
+# Update a bun-based Fixed Output Derivation package (opencode)
+def update_bunfod_package [config: record, version: string, original_content: string]: nothing -> bool {
+    # Update version and set fake hashes
+    let content = open $config.file
+    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+    let updated = (
+        $content
+        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
+        | str replace -r '(src = fetchFromGitHub \{[^}]*hash = )"sha256-[^"]*"' $'$1"($fake_hash)"'
+        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fake_hash)"'
+    )
+
+    $updated | save -f $config.file
+
+    # Build to get source hash
+    print "Building to get source hash..."
+    let src_result = (nix build .#opencode --no-link | complete)
+    let src_got_lines = (
+        $src_result.stderr
+        | lines
+        | where $it =~ "got:"
+    )
+
+    if ($src_got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch. Build output:"
+        print $src_result.stderr
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let src_hash = (
+        $src_got_lines
+        | first
+        | str trim
+        | split row "got:"
+        | get 1
+        | str trim
+    )
+
+    if ($src_hash | is-empty) {
+        print "Error: Could not extract source hash"
+        $original_content | save -f $config.file
+        return false
+    }
+
+    # Update source hash
+    let content2 = open $config.file
+    let updated2 = (
+        $content2
+        | str replace -r '(src = fetchFromGitHub \{[^}]*hash = )"sha256-[^"]*"' $'$1"($src_hash)"'
+    )
+    $updated2 | save -f $config.file
+
+    # Build to get outputHash (node_modules FOD)
+    print "Building to get node_modules outputHash..."
+    let fod_result = (nix build .#opencode --no-link | complete)
+    let fod_got_lines = (
+        $fod_result.stderr
+        | lines
+        | where $it =~ "got:"
+    )
+
+    if ($fod_got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch. Build output:"
+        print $fod_result.stderr
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let fod_hash = (
+        $fod_got_lines
+        | first
+        | str trim
+        | split row "got:"
+        | get 1
+        | str trim
+    )
+
+    if ($fod_hash | is-empty) {
+        print "Error: Could not extract outputHash"
+        $original_content | save -f $config.file
+        return false
+    }
+
+    # Update outputHash
+    let content3 = open $config.file
+    let updated3 = (
+        $content3
+        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fod_hash)"'
+    )
+    $updated3 | save -f $config.file
+    true
+}
+
 # Update README.md with new version in the packages table
 def update_readme [package: string, version: string] {
     let readme_path = "README.md"
@@ -323,6 +426,7 @@ def update_readme [package: string, version: string] {
         "claude-code" => '| `claude-code` | `claude` |',
         "gemini-cli" => '| `gemini-cli` | `gemini` |',
         "crush" => '| `crush` | `crush` |',
+        "opencode" => '| `opencode` | `opencode` |',
         _ => {
             print $"Warning: Unknown package ($package) for README update"
             return
