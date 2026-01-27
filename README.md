@@ -133,7 +133,7 @@ nix run github:luizribeiro/agentix#opencode
 | Package | Binary | Version | License | Description |
 |---------|--------|---------|---------|-------------|
 | `codex-cli` | `codex` | 0.91.0 | Unfree | OpenAI Codex CLI tool |
-| `claude-code` | `claude` | 2.1.19 | Unfree | Anthropic's official CLI for Claude |
+| `claude-code` | `claude` | 2.1.20 | Unfree | Anthropic's official CLI for Claude |
 | `gemini-cli` | `gemini` | 0.25.2 | Apache 2.0 | Google's Gemini AI CLI |
 | `crush` | `crush` | 0.22.1 | MIT | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.1.23 | MIT | Anomaly's AI coding agent |
