@@ -52,7 +52,8 @@ stdenv.mkDerivation {
       --set NODE_PATH "$out/lib/node_modules" \
       --set CLAUDE_CLI_DISABLE_UPDATE_CHECK "1" \
       --set SKIP_CLAUDE_UPDATE_CHECK "1" \
-      --set DISABLE_AUTOUPDATER "1"
+      --set DISABLE_AUTOUPDATER "1" \
+      --set DISABLE_INSTALLATION_CHECKS "1"
 
     runHook postInstall
   '';
