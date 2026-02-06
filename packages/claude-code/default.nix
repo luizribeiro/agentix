@@ -8,7 +8,7 @@
 }:
 
 let
-  version = "2.1.33";
+  version = "2.1.34";
   pname = "claude-code";
 in
 stdenv.mkDerivation {
@@ -16,7 +16,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
-    hash = "sha256-+aiNoLcUs3Lv1n01rJ47ZXS1QYwy2g/Nv0krKNWSEFQ=";
+    hash = "sha256-9poksTheZl3zwxmGwTNwAmUmTooZCY5huFqe73RYh1A=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
