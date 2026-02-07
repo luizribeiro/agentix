@@ -7,7 +7,7 @@
 }:
 
 let
-  version = "0.52.7";
+  version = "0.52.8";
   pname = "pi";
 
   src = fetchurl {
@@ -55,7 +55,7 @@ let
 
     dontFixup = true;
 
-    outputHash = "sha256-BOhVlNGPMATMa+en/i7v6hdloPV0e1OXdzBwJTDVa2Q=";
+    outputHash = "sha256-zw4R20/TQztVIMKc52PHTcyXLRTdYAuuaDOn1WC9q3Y=";
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
   };
