@@ -1,5 +1,5 @@
 {
-  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, crush)";
+  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, crush, pi)";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -14,6 +14,7 @@
         gemini-cli = final.callPackage ./packages/gemini-cli { };
         crush = final.callPackage ./packages/crush { };
         opencode = final.callPackage ./packages/opencode { };
+        pi = final.callPackage ./packages/pi { };
       };
 
       supportedSystems = [
@@ -40,6 +41,7 @@
           gemini-cli = pkgs.gemini-cli;
           crush = pkgs.crush;
           opencode = pkgs.opencode;
+          pi = pkgs.pi;
 
           default = pkgs.buildEnv {
             name = "agentix";
@@ -49,6 +51,7 @@
               pkgs.gemini-cli
               pkgs.crush
               pkgs.opencode
+              pkgs.pi
             ];
             meta = {
               description = "agentix - Your AI agents, packaged with Nix";
@@ -83,6 +86,11 @@
             program = "${pkgs.opencode}/bin/opencode";
           };
 
+          pi = {
+            type = "app";
+            program = "${pkgs.pi}/bin/pi";
+          };
+
           default = self.apps.${system}.claude;
         };
 
@@ -109,6 +117,7 @@
             echo "  ./scripts/update-package.nu gemini-cli"
             echo "  ./scripts/update-package.nu crush"
             echo "  ./scripts/update-package.nu opencode"
+            echo "  ./scripts/update-package.nu pi"
             echo ""
             echo "Build packages:"
             echo "  nix build .#codex-cli"
@@ -116,7 +125,8 @@
             echo "  nix build .#gemini-cli"
             echo "  nix build .#crush"
             echo "  nix build .#opencode"
-            echo "  nix build .#default  # agentix with all five tools"
+            echo "  nix build .#pi"
+            echo "  nix build .#default  # agentix with all six tools"
           '';
         };
       });

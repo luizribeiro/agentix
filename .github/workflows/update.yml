@@ -106,14 +106,29 @@ jobs:
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
 
+      - name: Update pi
+        id: update-pi
+        run: |
+          OUTPUT=$(nu scripts/update-package.nu pi)
+          echo "$OUTPUT"
+
+          # Parse output
+          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
+          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
+          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+
       - name: Test builds
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true'
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true'
         run: |
           echo "Testing package builds..."
           nix flake check --print-build-logs
 
       - name: Commit and push changes
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true'
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true'
         run: |
           git add packages/ README.md
 
@@ -137,6 +152,10 @@ jobs:
 
           if [ "${{ steps.update-opencode.outputs.updated }}" == "true" ]; then
             COMMIT_MSG="$COMMIT_MSG\n- opencode: ${{ steps.update-opencode.outputs.current }} → ${{ steps.update-opencode.outputs.latest }}"
+          fi
+
+          if [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
           fi
 
           git commit -m "$(echo -e "$COMMIT_MSG")"

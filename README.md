@@ -8,12 +8,13 @@
 - **gemini-cli** - Google's Gemini CLI
 - **crush** - Charmbracelet's Crush AI coding agent
 - **opencode** - Anomaly's OpenCode AI coding agent
+- **pi** - pi.dev minimal terminal-based coding agent
 
 Inspired by [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) and [claude-code-nix](https://github.com/sadjow/claude-code-nix).
 
 ## Features
 
-- ✨ Five AI agents in one flake
+- ✨ Six AI agents in one flake
 - 🔄 Automatic hourly updates via GitHub Actions
 - 📦 Individual or combined installation
 - 🎯 Multi-platform support (Linux x86_64/ARM64, macOS ARM64)
@@ -44,6 +45,9 @@ nix profile install github:luizribeiro/agentix#crush
 
 # Just opencode
 nix profile install github:luizribeiro/agentix#opencode
+
+# Just pi
+nix profile install github:luizribeiro/agentix#pi
 ```
 
 ### Run without installing
@@ -63,6 +67,9 @@ nix run github:luizribeiro/agentix#crush
 
 # Run opencode directly
 nix run github:luizribeiro/agentix#opencode
+
+# Run pi directly
+nix run github:luizribeiro/agentix#pi
 ```
 
 ## Usage in Other Flakes
@@ -92,6 +99,7 @@ nix run github:luizribeiro/agentix#opencode
           gemini-cli
           crush
           opencode
+          pi
         ];
       };
     };
@@ -122,6 +130,7 @@ nix run github:luizribeiro/agentix#opencode
           agentix.packages.${system}.gemini-cli
           agentix.packages.${system}.crush
           agentix.packages.${system}.opencode
+          agentix.packages.${system}.pi
         ];
       };
     };
@@ -137,7 +146,8 @@ nix run github:luizribeiro/agentix#opencode
 | `gemini-cli` | `gemini` | 0.27.3 | Apache 2.0 | Google's Gemini AI CLI |
 | `crush` | `crush` | 0.22.1 | MIT | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.1.23 | MIT | Anomaly's AI coding agent |
-| `default` | All | - | Mixed | Combined package with all five tools |
+| `pi` | `pi` | 0.52.7 | MIT | pi.dev minimal terminal-based coding agent |
+| `default` | All | - | Mixed | Combined package with all six tools |
 
 ## Supported Platforms
 
@@ -180,6 +190,7 @@ nix build .#claude-code
 nix build .#gemini-cli
 nix build .#crush
 nix build .#opencode
+nix build .#pi
 
 # Build all tools
 nix build .#default
@@ -212,6 +223,7 @@ The workflow automatically updates packages hourly. To manually update a package
 ./scripts/update-package.nu gemini-cli
 ./scripts/update-package.nu crush
 ./scripts/update-package.nu opencode
+./scripts/update-package.nu pi
 ```
 
 The script will:
@@ -222,6 +234,7 @@ The script will:
 
 **How it works:**
 - For `codex-cli` and `claude-code` (FOD packages): Fetches tarball hash using `nix-prefetch-url`
+- For `pi` (npm FOD): Fetches tarball hash and extracts node_modules outputHash from build output
 - For `gemini-cli` (buildNpmPackage): Builds twice to extract source and npmDeps hashes from error output
 - For `crush` (buildGoModule): Fetches from GitHub and extracts vendor hash from build output
 - For `opencode` (bun FOD): Fetches from GitHub and extracts source and node_modules hashes from build output
@@ -257,10 +270,12 @@ The update logic is centralized in [scripts/update-package.nu](scripts/update-pa
 │   │   └── default.nix          # gemini-cli package
 │   ├── crush/
 │   │   └── default.nix          # crush package
-│   └── opencode/
-│       ├── default.nix          # opencode package
-│       ├── models-dev.nix       # models-dev dependency
-│       └── *.patch              # build patches
+│   ├── opencode/
+│   │   ├── default.nix          # opencode package
+│   │   ├── models-dev.nix       # models-dev dependency
+│   │   └── *.patch              # build patches
+│   └── pi/
+│       └── default.nix          # pi package
 ├── .github/
 │   └── workflows/
 │       └── update.yml           # Auto-update workflow
@@ -274,6 +289,7 @@ The update logic is centralized in [scripts/update-package.nu](scripts/update-pa
 - **gemini-cli**: Apache 2.0 (free and open source)
 - **crush**: MIT (free and open source)
 - **opencode**: MIT (free and open source)
+- **pi**: MIT (free and open source)
 
 When using this flake, make sure to set `config.allowUnfree = true` in your nixpkgs configuration if you want to use codex-cli or claude-code.
 

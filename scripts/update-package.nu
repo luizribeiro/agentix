@@ -35,9 +35,14 @@ def main [package: string] {
             file: "packages/opencode/default.nix",
             type: "bunFod"
         },
+        "pi" => {
+            npm_name: "@mariozechner/pi-coding-agent",
+            file: "packages/pi/default.nix",
+            type: "npmFod"
+        },
         _ => {
             print $"Error: Unknown package '($package)'"
-            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode"
+            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi"
             exit 1
         }
     }
@@ -81,6 +86,8 @@ def main [package: string] {
     # Update based on package type
     let update_result = if $config.type == "fod" {
         update_fod_package $config $latest_version
+    } else if $config.type == "npmFod" {
+        update_npmfod_package $config $package $latest_version $original_content
     } else if $config.type == "buildNpmPackage" {
         update_buildnpm_package $config $latest_version $original_content
     } else if $config.type == "buildGoModule" {
@@ -128,6 +135,70 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
     )
 
     $updated | save -f $config.file
+    true
+}
+
+# Update an npm FOD package (pi) - has fetchurl hash + outputHash for node_modules
+def update_npmfod_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
+    let tarball_url = $"https://registry.npmjs.org/($config.npm_name)/-/(($config.npm_name | split row '/' | last))-($version).tgz"
+    print $"Fetching hash for ($tarball_url)..."
+
+    let hash_output = (nix-prefetch-url $tarball_url | complete)
+    if $hash_output.exit_code != 0 {
+        print $"Error fetching hash: ($hash_output.stderr)"
+        return false
+    }
+
+    let nix_hash = $hash_output.stdout | str trim
+    let sri_hash = (nix hash convert --hash-algo sha256 $nix_hash | complete | get stdout | str trim)
+    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+    let content = open $config.file
+    let updated = (
+        $content
+        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
+        | str replace -r '(src = fetchurl \{[^}]*hash = )"sha256-[^"]*"' $'$1"($sri_hash)"'
+        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fake_hash)"'
+    )
+
+    $updated | save -f $config.file
+
+    print "Building to get node_modules outputHash..."
+    let fod_result = (nix build $".#($package)" --no-link | complete)
+    let fod_got_lines = (
+        $fod_result.stderr
+        | lines
+        | where $it =~ "got:"
+    )
+
+    if ($fod_got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch. Build output:"
+        print $fod_result.stderr
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let fod_hash = (
+        $fod_got_lines
+        | first
+        | str trim
+        | split row "got:"
+        | get 1
+        | str trim
+    )
+
+    if ($fod_hash | is-empty) {
+        print "Error: Could not extract outputHash"
+        $original_content | save -f $config.file
+        return false
+    }
+
+    let content2 = open $config.file
+    let updated2 = (
+        $content2
+        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fod_hash)"'
+    )
+    $updated2 | save -f $config.file
     true
 }
 
@@ -427,6 +498,7 @@ def update_readme [package: string, version: string] {
         "gemini-cli" => '| `gemini-cli` | `gemini` |',
         "crush" => '| `crush` | `crush` |',
         "opencode" => '| `opencode` | `opencode` |',
+        "pi" => '| `pi` | `pi` |',
         _ => {
             print $"Warning: Unknown package ($package) for README update"
             return
