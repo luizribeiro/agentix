@@ -157,7 +157,7 @@ def update_npmfod_package [config: record, package: string, version: string, ori
     let updated = (
         $content
         | str replace -r 'version = "[^"]*"' $'version = "($version)"'
-        | str replace -r '(src = fetchurl \{[^}]*hash = )"sha256-[^"]*"' $'$1"($sri_hash)"'
+        | str replace -r '(?s)(src = fetchurl \{.*?hash = )"sha256-[^"]*"' $'$1"($sri_hash)"'
         | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fake_hash)"'
     )
 
