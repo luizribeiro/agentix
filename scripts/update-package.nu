@@ -138,8 +138,11 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
     true
 }
 
-# Update an npm FOD package (pi) - has fetchurl hash + outputHash for node_modules
+# Update an npm FOD package (pi) - has fetchurl hash + per-platform outputHash for node_modules
 def update_npmfod_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
+    let system = (nix eval --impure --expr builtins.currentSystem --raw | complete | get stdout | str trim)
+    print $"Detected system: ($system)"
+
     let tarball_url = $"https://registry.npmjs.org/($config.npm_name)/-/(($config.npm_name | split row '/' | last))-($version).tgz"
     print $"Fetching hash for ($tarball_url)..."
 
@@ -158,12 +161,12 @@ def update_npmfod_package [config: record, package: string, version: string, ori
         $content
         | str replace -r 'version = "[^"]*"' $'version = "($version)"'
         | str replace -r '(?s)(src = fetchurl \{.*?hash = )"sha256-[^"]*"' $'$1"($sri_hash)"'
-        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fake_hash)"'
+        | str replace -r $'"($system)" = "sha256-[^"]*"' $'"($system)" = "($fake_hash)"'
     )
 
     $updated | save -f $config.file
 
-    print "Building to get node_modules outputHash..."
+    print $"Building to get node_modules outputHash for ($system)..."
     let fod_result = (nix build $".#($package)" --no-link | complete)
     let fod_got_lines = (
         $fod_result.stderr
@@ -196,7 +199,7 @@ def update_npmfod_package [config: record, package: string, version: string, ori
     let content2 = open $config.file
     let updated2 = (
         $content2
-        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fod_hash)"'
+        | str replace $'"($system)" = "($fake_hash)"' $'"($system)" = "($fod_hash)"'
     )
     $updated2 | save -f $config.file
     true

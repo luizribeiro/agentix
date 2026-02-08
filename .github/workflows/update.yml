@@ -8,9 +8,9 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    outputs:
+      any-updated: ${{ steps.check.outputs.any-updated }}
+      pi-updated: ${{ steps.update-pi.outputs.updated }}
 
     steps:
       - name: Checkout repository
@@ -26,18 +26,12 @@ jobs:
         run: |
           nix profile install nixpkgs#nushell
 
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Update codex-cli
         id: update-codex
         run: |
           OUTPUT=$(nu scripts/update-package.nu codex-cli)
           echo "$OUTPUT"
 
-          # Parse output
           UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
           CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
           LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
@@ -52,7 +46,6 @@ jobs:
           OUTPUT=$(nu scripts/update-package.nu claude-code)
           echo "$OUTPUT"
 
-          # Parse output
           UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
           CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
           LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
@@ -67,7 +60,6 @@ jobs:
           OUTPUT=$(nu scripts/update-package.nu gemini-cli)
           echo "$OUTPUT"
 
-          # Parse output
           UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
           CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
           LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
@@ -82,7 +74,6 @@ jobs:
           OUTPUT=$(nu scripts/update-package.nu crush)
           echo "$OUTPUT"
 
-          # Parse output
           UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
           CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
           LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
@@ -97,7 +88,6 @@ jobs:
           OUTPUT=$(nu scripts/update-package.nu opencode)
           echo "$OUTPUT"
 
-          # Parse output
           UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
           CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
           LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
@@ -112,7 +102,6 @@ jobs:
           OUTPUT=$(nu scripts/update-package.nu pi)
           echo "$OUTPUT"
 
-          # Parse output
           UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
           CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
           LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
@@ -127,36 +116,141 @@ jobs:
           echo "Testing package builds..."
           nix flake check --print-build-logs
 
-      - name: Commit and push changes
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true'
+      - name: Check if any updated
+        id: check
         run: |
-          git add packages/ README.md
+          if [ "${{ steps.update-codex.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-claude.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-gemini.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-crush.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-opencode.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
+            echo "any-updated=true" >> $GITHUB_OUTPUT
+          else
+            echo "any-updated=false" >> $GITHUB_OUTPUT
+          fi
 
-          COMMIT_MSG="chore: update packages"
+      - name: Prepare commit message
+        if: steps.check.outputs.any-updated == 'true'
+        run: |
+          MSG="chore: update packages"
 
           if [ "${{ steps.update-codex.outputs.updated }}" == "true" ]; then
-            COMMIT_MSG="$COMMIT_MSG\n\n- codex-cli: ${{ steps.update-codex.outputs.current }} → ${{ steps.update-codex.outputs.latest }}"
+            MSG="$MSG\n\n- codex-cli: ${{ steps.update-codex.outputs.current }} → ${{ steps.update-codex.outputs.latest }}"
           fi
 
           if [ "${{ steps.update-claude.outputs.updated }}" == "true" ]; then
-            COMMIT_MSG="$COMMIT_MSG\n- claude-code: ${{ steps.update-claude.outputs.current }} → ${{ steps.update-claude.outputs.latest }}"
+            MSG="$MSG\n- claude-code: ${{ steps.update-claude.outputs.current }} → ${{ steps.update-claude.outputs.latest }}"
           fi
 
           if [ "${{ steps.update-gemini.outputs.updated }}" == "true" ]; then
-            COMMIT_MSG="$COMMIT_MSG\n- gemini-cli: ${{ steps.update-gemini.outputs.current }} → ${{ steps.update-gemini.outputs.latest }}"
+            MSG="$MSG\n- gemini-cli: ${{ steps.update-gemini.outputs.current }} → ${{ steps.update-gemini.outputs.latest }}"
           fi
 
           if [ "${{ steps.update-crush.outputs.updated }}" == "true" ]; then
-            COMMIT_MSG="$COMMIT_MSG\n- crush: ${{ steps.update-crush.outputs.current }} → ${{ steps.update-crush.outputs.latest }}"
+            MSG="$MSG\n- crush: ${{ steps.update-crush.outputs.current }} → ${{ steps.update-crush.outputs.latest }}"
           fi
 
           if [ "${{ steps.update-opencode.outputs.updated }}" == "true" ]; then
-            COMMIT_MSG="$COMMIT_MSG\n- opencode: ${{ steps.update-opencode.outputs.current }} → ${{ steps.update-opencode.outputs.latest }}"
+            MSG="$MSG\n- opencode: ${{ steps.update-opencode.outputs.current }} → ${{ steps.update-opencode.outputs.latest }}"
           fi
 
           if [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
-            COMMIT_MSG="$COMMIT_MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
+            MSG="$MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
           fi
 
-          git commit -m "$(echo -e "$COMMIT_MSG")"
+          echo -e "$MSG" > .commit-message
+
+      - name: Upload updated files
+        if: steps.check.outputs.any-updated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: updated-packages
+          path: |
+            packages/
+            README.md
+            .commit-message
+
+  pi-macos-hash:
+    needs: update
+    if: needs.update.outputs.pi-updated == 'true'
+    runs-on: macos-latest
+    outputs:
+      hash: ${{ steps.compute.outputs.hash }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download updated files
+        uses: actions/download-artifact@v4
+        with:
+          name: updated-packages
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Compute macOS hash for pi
+        id: compute
+        run: |
+          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          sed -i '' 's|"aarch64-darwin" = "sha256-[^"]*"|"aarch64-darwin" = "'"$FAKE"'"|' packages/pi/default.nix
+          RESULT=$(nix build .#pi --no-link 2>&1 || true)
+          HASH=$(echo "$RESULT" | grep 'got:' | head -1 | awk '{print $2}')
+          if [ -z "$HASH" ]; then
+            echo "Error: Could not extract hash from build output:"
+            echo "$RESULT"
+            exit 1
+          fi
+          echo "Computed aarch64-darwin hash: $HASH"
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+
+  commit:
+    needs: [update, pi-macos-hash]
+    if: always() && needs.update.result == 'success' && needs.update.outputs.any-updated == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download updated files
+        uses: actions/download-artifact@v4
+        with:
+          name: updated-packages
+
+      - name: Patch macOS hash for pi
+        if: needs.pi-macos-hash.result == 'success'
+        run: |
+          HASH="${{ needs.pi-macos-hash.outputs.hash }}"
+          if [ -z "$HASH" ]; then
+            echo "Error: macOS hash output is empty"
+            exit 1
+          fi
+          sed -i 's|"aarch64-darwin" = "sha256-[^"]*"|"aarch64-darwin" = "'"$HASH"'"|' packages/pi/default.nix
+
+      - name: Verify pi hashes are not fake
+        if: needs.update.outputs.pi-updated == 'true'
+        run: |
+          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          if grep -q "$FAKE" packages/pi/default.nix; then
+            echo "Error: pi default.nix still contains a fake hash"
+            grep "$FAKE" packages/pi/default.nix
+            exit 1
+          fi
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push changes
+        run: |
+          git add packages/ README.md
+          git commit -m "$(cat .commit-message)"
           git push

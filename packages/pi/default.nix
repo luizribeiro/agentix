@@ -55,7 +55,10 @@ let
 
     dontFixup = true;
 
-    outputHash = "sha256-NXfTlWBt52/PLCcOVIXY0msdLnPDGBTuflaauf4+9po=";
+    outputHash = {
+      "aarch64-darwin" = "sha256-SGnNzc8b0w+QsnspkPxAl5Y8iYMXJ/geXFdzTZ0V0go=";
+      "x86_64-linux" = "sha256-NXfTlWBt52/PLCcOVIXY0msdLnPDGBTuflaauf4+9po=";
+    }.${stdenvNoCC.system};
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
   };
@@ -86,7 +89,7 @@ stdenvNoCC.mkDerivation {
     homepage = "https://pi.dev";
     license = licenses.mit;
     maintainers = [ ];
-    platforms = platforms.all;
+    platforms = [ "aarch64-darwin" "x86_64-linux" ];
     mainProgram = "pi";
   };
 }
