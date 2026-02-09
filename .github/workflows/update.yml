@@ -159,7 +159,7 @@ jobs:
             MSG="$MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
           fi
 
-          echo -e "$MSG" > .commit-message
+          echo -e "$MSG" > commit-message.txt
 
       - name: Upload updated files
         if: steps.check.outputs.any-updated == 'true'
@@ -169,7 +169,7 @@ jobs:
           path: |
             packages/
             README.md
-            .commit-message
+            commit-message.txt
 
   pi-macos-hash:
     needs: update
@@ -252,5 +252,5 @@ jobs:
       - name: Commit and push changes
         run: |
           git add packages/ README.md
-          git commit -m "$(cat .commit-message)"
+          git commit -m "$(cat commit-message.txt)"
           git push
