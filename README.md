@@ -141,11 +141,11 @@ nix run github:luizribeiro/agentix#pi
 
 | Package | Binary | Version | License | Description |
 |---------|--------|---------|---------|-------------|
-| `codex-cli` | `codex` | 0.99.0 | Unfree | OpenAI Codex CLI tool |
+| `codex-cli` | `codex` | 0.100.0 | Unfree | OpenAI Codex CLI tool |
 | `claude-code` | `claude` | 2.1.39 | Unfree | Anthropic's official CLI for Claude |
 | `gemini-cli` | `gemini` | 0.28.2 | Apache 2.0 | Google's Gemini AI CLI |
 | `crush` | `crush` | 0.22.1 | MIT | Charmbracelet's AI coding agent |
-| `opencode` | `opencode` | 1.1.62 | MIT | Anomaly's AI coding agent |
+| `opencode` | `opencode` | 1.1.63 | MIT | Anomaly's AI coding agent |
 | `pi` | `pi` | 0.52.9 | MIT | pi.dev minimal terminal-based coding agent |
 | `default` | All | - | Mixed | Combined package with all six tools |
 
