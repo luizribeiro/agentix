@@ -146,6 +146,75 @@ nix run github:luizribeiro/agentix#gondolin
 }
 ```
 
+## Gondolin NixOS Guest Module
+
+Agentix also exports a NixOS module that builds Gondolin-compatible guest assets from NixOS.
+
+### Import the module
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    agentix.url = "github:luizribeiro/agentix";
+  };
+
+  outputs = { self, nixpkgs, agentix, ... }: {
+    nixosConfigurations.gondolin-guest = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        agentix.nixosModules.gondolin-guest
+        ({ ... }: {
+          virtualisation.gondolin.guest.enable = true;
+
+          fileSystems."/" = {
+            device = "/dev/disk/by-label/gondolin-root";
+            fsType = "ext4";
+          };
+
+          boot.loader.grub.devices = [ "/dev/vda" ];
+          system.stateVersion = "25.11";
+        })
+      ];
+    };
+  };
+}
+```
+
+### Build assets
+
+```bash
+nix build .#nixosConfigurations.gondolin-guest.config.system.build.gondolinAssets
+```
+
+### Run Gondolin with those assets
+
+```bash
+GONDOLIN_GUEST_DIR="$(readlink -f result)" nix run .#gondolin -- bash
+```
+
+### Notes and current limitations
+
+- Linux-only guest asset build path (x86_64-linux and aarch64-linux).
+- `virtualisation.gondolin.guest.includeOpenSSH = true` provides compatibility for `vm.enableSsh()`.
+- Do **not** set `services.openssh.enable = true` with this module; Gondolin manages sshd lifecycle.
+- `sandboxingress` support is intentionally deferred for now.
+
+### Development validation checklist
+
+Useful smoke commands while iterating:
+
+```bash
+ASSETS="$(nix path-info .#nixosConfigurations.gondolin-guest-test.config.system.build.gondolinAssets)"
+
+GONDOLIN_GUEST_DIR="$ASSETS" nix run .#gondolin -- exec -- /bin/true
+GONDOLIN_GUEST_DIR="$ASSETS" nix run .#gondolin -- exec -- /bin/sh -lc 'echo sh-ok'
+GONDOLIN_GUEST_DIR="$ASSETS" nix run .#gondolin -- exec -- /bin/bash -lc 'echo bash-ok'
+
+# Runtime smoke checks
+nix build .#checks.x86_64-linux.gondolin-runtime-smoke
+```
+
 ## Available Packages
 
 | Package | Binary | Version | License | Description |
@@ -236,6 +305,9 @@ The workflow automatically updates packages hourly. To manually update a package
 ./scripts/update-package.nu opencode
 ./scripts/update-package.nu pi
 ./scripts/update-package.nu gondolin
+
+# Verify gondolin + gondolin-guest-bins lockstep
+./scripts/update-package.nu --check-lockstep
 ```
 
 The script will:
@@ -247,6 +319,7 @@ The script will:
 **How it works:**
 - For `codex-cli` and `claude-code` (FOD packages): Fetches tarball hash using `nix-prefetch-url`
 - For `pi` and `gondolin` (npm FOD): Fetches tarball hash and extracts node_modules outputHash from build output
+- `gondolin` updates also synchronize `packages/gondolin-guest-bins/default.nix` to the same version/source revision
 - For `gemini-cli` (buildNpmPackage): Builds twice to extract source and npmDeps hashes from error output
 - For `crush` (buildGoModule): Fetches from GitHub and extracts vendor hash from build output
 - For `opencode` (bun FOD): Fetches from GitHub and extracts source and node_modules hashes from build output
