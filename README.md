@@ -148,11 +148,10 @@ GONDOLIN_GUEST_DIR="$(readlink -f result)" nix run .#gondolin -- exec -- echo he
 
       guest = agentix.lib.mkGondolinGuestSystem {
         inherit system;
-        modules = [
-          ({ ... }: {
-            # your guest customizations
-            environment.systemPackages = [ pkgs.hello ];
-          })
+        extraPackages = with pkgs; [
+          neovim
+          git
+          python3
         ];
       };
 
@@ -182,6 +181,44 @@ Run Gondolin without manually setting `GONDOLIN_GUEST_DIR`:
 
 ```bash
 nix run .#gondolin -- exec -- echo hello
+```
+
+### Non-flake usage (`default.nix`)
+
+You can also import Agentix as plain Nix and use the same helpers:
+
+```nix
+let
+  src = fetchTarball "https://github.com/luizribeiro/agentix/archive/main.tar.gz";
+
+  agentix = import src { };
+
+  pkgs = import <nixpkgs> {
+    system = "x86_64-linux";
+    overlays = [ agentix.overlays.default ];
+  };
+
+  guest = agentix.lib.mkGondolinGuestSystem {
+    system = "x86_64-linux";
+    extraPackages = with pkgs; [
+      neovim
+      git
+      python3
+    ];
+  };
+
+  assets = agentix.lib.mkGondolinAssets {
+    guestSystem = guest;
+  };
+
+  gondolin = agentix.lib.mkGondolinWithAssets {
+    inherit pkgs assets;
+    name = "gondolin-project";
+  };
+in
+{
+  inherit assets gondolin;
+}
 ```
 
 Notes:
