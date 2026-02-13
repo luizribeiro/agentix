@@ -2,11 +2,66 @@
 
 let
   cfg = config.virtualisation.gondolin.guest;
+
   defaultArch =
     if pkgs.stdenv.hostPlatform.isAarch64 then
       "aarch64"
     else
       "x86_64";
+
+  waitTimeoutSeconds = 30;
+  waitSleepSeconds = 1;
+
+  gondolinSandboxStackScript = pkgs.writeShellScript "gondolin-sandbox-stack" ''
+    set -eu
+
+    timeout_seconds=${toString waitTimeoutSeconds}
+    sleep_seconds=${toString waitSleepSeconds}
+    max_attempts=$((timeout_seconds / sleep_seconds))
+
+    log() {
+      echo "[gondolin-sandbox-stack] $*"
+    }
+
+    wait_for_virtio_node() {
+      node_path="$1"
+      node_name="$2"
+      attempt=1
+
+      while [ "$attempt" -le "$max_attempts" ]; do
+        if [ -e "$node_path" ]; then
+          log "Ready: $node_name ($node_path)"
+          return 0
+        fi
+
+        log "Waiting for $node_name ($node_path), attempt $attempt/$max_attempts"
+        sleep "$sleep_seconds"
+        attempt=$((attempt + 1))
+      done
+
+      log "ERROR: timed out after ${toString waitTimeoutSeconds}s waiting for $node_name ($node_path)"
+      return 1
+    }
+
+    log "Starting Gondolin sandbox stack"
+
+    wait_for_virtio_node /dev/virtio-ports/virtio-port control-channel
+    wait_for_virtio_node /dev/virtio-ports/virtio-fs filesystem-channel
+    ${lib.optionalString cfg.includeOpenSSH "wait_for_virtio_node /dev/virtio-ports/virtio-ssh ssh-channel"}
+
+    log "Launching sandboxfs"
+    ${pkgs.gondolin-guest-bins}/bin/sandboxfs &
+    log "sandboxfs started (pid $!)"
+
+    ${lib.optionalString cfg.includeOpenSSH ''
+      log "Launching sandboxssh"
+      ${pkgs.gondolin-guest-bins}/bin/sandboxssh &
+      log "sandboxssh started (pid $!)"
+    ''}
+
+    log "Launching sandboxd in foreground"
+    exec ${pkgs.gondolin-guest-bins}/bin/sandboxd
+  '';
 in
 {
   options.virtualisation.gondolin.guest = {
@@ -59,8 +114,54 @@ in
         assertion = cfg.rootfsLabel != "";
         message = "virtualisation.gondolin.guest.rootfsLabel must not be empty.";
       }
+      {
+        assertion = !(cfg.includeOpenSSH && config.services.openssh.enable);
+        message =
+          "virtualisation.gondolin.guest.includeOpenSSH provides sshd compatibility only. "
+          + "Do not enable services.openssh with Gondolin guest mode; let Gondolin manage sshd via vm.enableSsh().";
+      }
     ];
 
-    environment.systemPackages = cfg.extraPackages;
+    environment.systemPackages =
+      [
+        pkgs.gondolin-guest-bins
+        pkgs.bashInteractive
+      ]
+      ++ lib.optionals cfg.includeOpenSSH [ pkgs.openssh ]
+      ++ cfg.extraPackages;
+
+    systemd.tmpfiles.rules =
+      [
+        "L+ /bin/sh - - - - /run/current-system/sw/bin/sh"
+        "L+ /bin/bash - - - - /run/current-system/sw/bin/bash"
+      ]
+      ++ lib.optionals cfg.includeOpenSSH [
+        "d /usr/sbin 0755 root root -"
+        "L+ /usr/sbin/sshd - - - - /run/current-system/sw/bin/sshd"
+      ];
+
+    systemd.services.gondolin-sandbox-stack = {
+      description = "Gondolin guest daemon compatibility stack";
+      wantedBy = [ "multi-user.target" ];
+      after = [
+        "local-fs.target"
+        "systemd-udevd.service"
+      ];
+      wants = [ "systemd-udevd.service" ];
+
+      unitConfig = {
+        StartLimitIntervalSec = 120;
+        StartLimitBurst = 10;
+      };
+
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = gondolinSandboxStackScript;
+        Restart = "on-failure";
+        RestartSec = "2s";
+        StandardOutput = "journal";
+        StandardError = "journal";
+      };
+    };
   };
 }
