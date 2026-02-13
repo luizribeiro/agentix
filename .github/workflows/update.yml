@@ -124,6 +124,10 @@ jobs:
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
 
+      - name: Verify gondolin lockstep
+        run: |
+          nu scripts/update-package.nu --check-lockstep
+
       - name: Test builds
         if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true' || steps.update-gondolin.outputs.updated == 'true'
         run: |
@@ -176,6 +180,7 @@ jobs:
 
           if [ "${{ steps.update-gondolin.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- gondolin: ${{ steps.update-gondolin.outputs.current }} → ${{ steps.update-gondolin.outputs.latest }}"
+            MSG="$MSG\n- gondolin-guest-bins: ${{ steps.update-gondolin.outputs.current }} → ${{ steps.update-gondolin.outputs.latest }}"
           fi
 
           echo -e "$MSG" > commit-message.txt

@@ -5,7 +5,80 @@
 # Usage: ./scripts/update-package.nu <package-name>
 # Example: ./scripts/update-package.nu codex-cli
 
-def main [package: string] {
+def parse_version [file: string] {
+    (
+        open $file
+        | lines
+        | where $it =~ 'version = '
+        | first
+        | str replace 'version = "' ''
+        | str replace '";' ''
+        | str trim
+    )
+}
+
+def check_gondolin_lockstep [] {
+    let gondolin_version = parse_version "packages/gondolin/default.nix"
+    let guest_bins_version = parse_version "packages/gondolin-guest-bins/default.nix"
+
+    if $gondolin_version != $guest_bins_version {
+        print $"Error: gondolin lockstep mismatch: packages/gondolin/default.nix=($gondolin_version), packages/gondolin-guest-bins/default.nix=($guest_bins_version)"
+        return false
+    }
+
+    print $"✓ gondolin lockstep OK version=($gondolin_version)"
+    true
+}
+
+def sync_gondolin_guest_bins [version: string, hash_override?: string]: nothing -> bool {
+    let package_file = "packages/gondolin-guest-bins/default.nix"
+
+    let sri_hash = if ($hash_override | is-not-empty) {
+        $hash_override
+    } else {
+        let tarball_url = $"https://github.com/earendil-works/gondolin/archive/refs/tags/v($version).tar.gz"
+        print $"Fetching hash for ($tarball_url)..."
+
+        let hash_output = (nix-prefetch-url --unpack $tarball_url | complete)
+        if $hash_output.exit_code != 0 {
+            print $"Error fetching hash: ($hash_output.stderr)"
+            return false
+        }
+
+        let nix_hash = $hash_output.stdout | str trim
+        (nix hash convert --hash-algo sha256 $nix_hash | complete | get stdout | str trim)
+    }
+
+    let content = open $package_file
+    let updated = (
+        $content
+        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
+        | str replace -r '(?s)(src = fetchFromGitHub \{.*?hash = )"sha256-[^"]*"' $'$1"($sri_hash)"'
+    )
+
+    $updated | save -f $package_file
+    print $"✓ Synchronized gondolin-guest-bins to version ($version)"
+    true
+}
+
+def main [package?: string, --check-lockstep] {
+    if $check_lockstep {
+        if (check_gondolin_lockstep) {
+            print "updated=false"
+            return
+        }
+
+        exit 1
+    }
+
+    if ($package | is-empty) {
+        print "Error: missing package argument"
+        print "Usage: ./scripts/update-package.nu <package-name>"
+        print "       ./scripts/update-package.nu --check-lockstep"
+        exit 1
+    }
+
+    let package = $package
     # Package configuration
     let config = match $package {
         "codex-cli" => {
@@ -78,6 +151,21 @@ def main [package: string] {
     print $"Latest:  ($latest_version)"
 
     if $current_version == $latest_version {
+        if $package == "gondolin" {
+            if not (check_gondolin_lockstep) {
+                print "↻ Synchronizing gondolin-guest-bins with current gondolin version"
+                if not (sync_gondolin_guest_bins $current_version) {
+                    print "updated=false"
+                    return
+                }
+
+                print "updated=true"
+                print $"current=($current_version)"
+                print $"latest=($latest_version)"
+                return
+            }
+        }
+
         print $"✓ ($package) is up to date"
         print "updated=false"
         return
@@ -105,6 +193,13 @@ def main [package: string] {
         print $"⚠ Could not update ($package) - build requirements not met"
         print "updated=false"
         return
+    }
+
+    if $package == "gondolin" {
+        if not (sync_gondolin_guest_bins $latest_version) {
+            print "updated=false"
+            return
+        }
     }
 
     # Update README.md with new version
