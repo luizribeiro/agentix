@@ -76,9 +76,17 @@ nix run github:luizribeiro/agentix#gondolin
 }
 ```
 
-## Gondolin NixOS guest module
+## Gondolin guest helpers (module + flake lib)
 
-Agentix exports `nixosModules.gondolin-guest` to build Gondolin-compatible guest assets from NixOS.
+Agentix exports both:
+- `nixosModules.gondolin-guest`
+- flake `lib` helpers to make guest systems/assets easy to compose:
+  - `agentix.lib.defaultGuestArchForSystem`
+  - `agentix.lib.mkGondolinGuestSystem`
+  - `agentix.lib.mkGondolinAssets`
+  - `agentix.lib.mkGondolinWithAssets`
+
+### Minimal module usage
 
 ```nix
 {
@@ -109,7 +117,7 @@ Agentix exports `nixosModules.gondolin-guest` to build Gondolin-compatible guest
 }
 ```
 
-Build guest assets:
+Build assets from that `nixosConfiguration`:
 
 ```bash
 nix build .#nixosConfigurations.gondolin-guest.config.system.build.gondolinAssets
@@ -118,7 +126,62 @@ nix build .#nixosConfigurations.gondolin-guest.config.system.build.gondolinAsset
 Run Gondolin with those assets:
 
 ```bash
-GONDOLIN_GUEST_DIR="$(readlink -f result)" nix run .#gondolin -- bash
+GONDOLIN_GUEST_DIR="$(readlink -f result)" nix run .#gondolin -- exec -- echo hello
+```
+
+### Recommended: helper-based usage in downstream flakes
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    agentix.url = "github:luizribeiro/agentix";
+  };
+
+  outputs = { self, nixpkgs, agentix, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [ agentix.overlays.default ];
+      };
+
+      guest = agentix.lib.mkGondolinGuestSystem {
+        inherit system;
+        modules = [
+          ({ ... }: {
+            # your guest customizations
+            environment.systemPackages = [ pkgs.hello ];
+          })
+        ];
+      };
+
+      assets = agentix.lib.mkGondolinAssets {
+        guestSystem = guest;
+      };
+
+      gondolinWithAssets = agentix.lib.mkGondolinWithAssets {
+        inherit pkgs assets;
+        name = "gondolin-project";
+      };
+    in
+    {
+      packages.${system}.gondolin-assets = assets;
+      packages.${system}.gondolin = gondolinWithAssets;
+    };
+}
+```
+
+Build assets:
+
+```bash
+nix build .#gondolin-assets
+```
+
+Run Gondolin without manually setting `GONDOLIN_GUEST_DIR`:
+
+```bash
+nix run .#gondolin -- exec -- echo hello
 ```
 
 Notes:
