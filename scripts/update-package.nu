@@ -111,8 +111,7 @@ def main [package?: string, --check-lockstep] {
         "pi" => {
             npm_name: "@mariozechner/pi-coding-agent",
             file: "packages/pi/default.nix",
-            type: "npmFod",
-            linux_hash_aliases: [ "x86_64-linux" "aarch64-linux" ]
+            type: "npmFod"
         },
         "gondolin" => {
             npm_name: "@earendil-works/gondolin",
@@ -303,18 +302,7 @@ def update_npmfod_package [config: record, package: string, version: string, ori
         | str replace $'"($system)" = "($fake_hash)"' $'"($system)" = "($fod_hash)"'
     )
 
-    let linux_hash_aliases = ($config | get -o linux_hash_aliases | default [])
-    let updated3 = if ($linux_hash_aliases | is-empty) {
-        $updated2
-    } else {
-        mut content3 = $updated2
-        for alias in $linux_hash_aliases {
-            $content3 = ($content3 | str replace -r $'"($alias)" = "sha256-[^"]*"' $'"($alias)" = "($fod_hash)"')
-        }
-        $content3
-    }
-
-    $updated3 | save -f $config.file
+    $updated2 | save -f $config.file
     true
 }
 
