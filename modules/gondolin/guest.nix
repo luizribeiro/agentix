@@ -157,12 +157,6 @@ in
       description = "Whether OpenSSH compatibility should be enabled in the guest.";
     };
 
-    extraPackages = lib.mkOption {
-      type = lib.types.listOf lib.types.package;
-      default = [ ];
-      description = "Additional packages to include in the Gondolin guest environment.";
-    };
-
     diskSizeMb = lib.mkOption {
       type = lib.types.nullOr lib.types.ints.positive;
       default = null;
@@ -207,8 +201,7 @@ in
         pkgs.gondolin-guest-bins
         pkgs.bashInteractive
       ]
-      ++ lib.optionals cfg.includeOpenSSH [ pkgs.openssh ]
-      ++ cfg.extraPackages;
+      ++ lib.optionals cfg.includeOpenSSH [ pkgs.openssh ];
 
     environment.etc = lib.mkIf cfg.includeOpenSSH {
       "ssh/sshd_config".text = "";

@@ -40,7 +40,6 @@
         , arch ? defaultGuestArchForSystem system
         , rootfsLabel ? "gondolin-root"
         , includeOpenSSH ? true
-        , extraPackages ? [ ]
         , diskSizeMb ? null
         , stateVersion ? "25.11"
         }:
@@ -53,7 +52,7 @@
 
               virtualisation.gondolin.guest = {
                 enable = true;
-                inherit arch rootfsLabel includeOpenSSH extraPackages diskSizeMb;
+                inherit arch rootfsLabel includeOpenSSH diskSizeMb;
               };
 
               fileSystems."/" = {

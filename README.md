@@ -148,10 +148,14 @@ GONDOLIN_GUEST_DIR="$(readlink -f result)" nix run .#gondolin -- exec -- echo he
 
       guest = agentix.lib.mkGondolinGuestSystem {
         inherit system;
-        extraPackages = with pkgs; [
-          neovim
-          git
-          python3
+        modules = [
+          ({ pkgs, ... }: {
+            environment.systemPackages = with pkgs; [
+              neovim
+              git
+              python3
+            ];
+          })
         ];
       };
 
@@ -200,10 +204,14 @@ let
 
   guest = agentix.lib.mkGondolinGuestSystem {
     system = "x86_64-linux";
-    extraPackages = with pkgs; [
-      neovim
-      git
-      python3
+    modules = [
+      ({ pkgs, ... }: {
+        environment.systemPackages = with pkgs; [
+          neovim
+          git
+          python3
+        ];
+      })
     ];
   };
 

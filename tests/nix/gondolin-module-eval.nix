@@ -101,7 +101,6 @@ assert cfg.enable;
 assert cfg.arch == hostDefaultArch;
 assert cfg.rootfsLabel == "gondolin-root";
 assert cfg.includeOpenSSH;
-assert cfg.extraPackages == [ ];
 assert cfg.diskSizeMb == null;
 assert cfgNoSsh.enable;
 assert !cfgNoSsh.includeOpenSSH;
