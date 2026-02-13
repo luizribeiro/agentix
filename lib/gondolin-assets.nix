@@ -75,6 +75,7 @@ let
 
       modprobe virtio_mmio 2>/dev/null || log "modprobe virtio_mmio failed or not needed"
       modprobe virtio_blk 2>/dev/null || log "modprobe virtio_blk failed or not needed"
+      modprobe virtio_console 2>/dev/null || log "modprobe virtio_console failed or not needed"
       modprobe ext4 2>/dev/null || log "modprobe ext4 failed or not needed"
 
       wait_limit=30
@@ -90,6 +91,12 @@ let
       mount -t ext4 /dev/vda /newroot || failure_shell "failed to mount /dev/vda on /newroot"
 
       mkdir -p /newroot/proc /newroot/sys /newroot/dev /newroot/run
+
+      # Ensure mounts from initramfs carry over into stage-2 userspace.
+      mount --move /proc /newroot/proc || log "failed to move /proc"
+      mount --move /sys /newroot/sys || log "failed to move /sys"
+      mount --move /dev /newroot/dev || log "failed to move /dev"
+      mount --move /run /newroot/run || log "failed to move /run"
 
       if [ -x /newroot/sbin/init ]; then
         log "switch_root -> /sbin/init"
@@ -145,6 +152,7 @@ in
         nativeBuildInputs = [
           pkgs.coreutils
           pkgs.e2fsprogs
+          pkgs.gnutar
         ];
       } ''
         set -euo pipefail
@@ -153,10 +161,20 @@ in
         mkdir -p "$root/nix/store" "$root/nix/var/nix/profiles" "$root/etc"
 
         # Copy full NixOS toplevel closure into the image store.
+        # NOTE: `cp -a` in this build context produced mode regressions for some
+        # executables (e.g. guest helper binaries ended up 0600). Using a tar
+        # stream preserves mode bits reliably while avoiding ownership restoration.
         while IFS= read -r p; do
           [ -n "$p" ] || continue
-          cp -a "$p" "$root/nix/store/"
+          rel="''${p#/}"
+          (cd / && tar -cpf - "$rel") | (cd "$root" && tar -xpf - --no-same-owner)
         done < ${toplevelClosure}/store-paths
+
+        # Sanity-check critical guest helper binaries remain executable.
+        for b in sandboxd sandboxfs sandboxssh; do
+          [ -x "$root${pkgs.gondolin-guest-bins}/bin/$b" ] \
+            || (echo "missing executable bit on $b in staged rootfs" >&2; exit 1)
+        done
 
         ln -s ${config.system.build.toplevel} "$root/nix/var/nix/profiles/system-1-link"
         ln -s system-1-link "$root/nix/var/nix/profiles/system"
