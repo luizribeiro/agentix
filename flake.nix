@@ -124,6 +124,10 @@
           gondolin-assets-manifest-schema = import ./tests/nix/gondolin-assets-manifest-schema.nix {
             inherit nixpkgs system;
           };
+
+          gondolin-initramfs-content = import ./tests/nix/gondolin-initramfs-content.nix {
+            inherit nixpkgs system;
+          };
         };
 
         devShells.default = pkgs.mkShell {
