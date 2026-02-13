@@ -29,6 +29,10 @@
     in
     {
       overlays.default = overlay;
+
+      nixosModules = {
+        gondolin-guest = import ./modules/gondolin/guest.nix;
+      };
     } //
     flake-utils.lib.eachSystem supportedSystems (system:
       let
@@ -105,6 +109,13 @@
           };
 
           default = self.apps.${system}.claude;
+        };
+
+        checks = pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          gondolin-module-eval = import ./tests/nix/gondolin-module-eval.nix {
+            inherit nixpkgs system;
+            module = self.nixosModules.gondolin-guest;
+          };
         };
 
         devShells.default = pkgs.mkShell {
