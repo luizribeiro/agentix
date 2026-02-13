@@ -10,91 +10,120 @@ let
     else
       pkgs.busybox;
 
-  mkGondolinInitramfs = pkgs.runCommand "gondolin-initramfs"
-    {
-      nativeBuildInputs = [
-        pkgs.cpio
-        pkgs.findutils
-        pkgs.lz4
-      ];
-    } ''
-    set -euo pipefail
+  kmodPackage =
+    if pkgs.stdenv.hostPlatform.isLinux then
+      assert pkgs.pkgsStatic ? kmod;
+      pkgs.pkgsStatic.kmod
+    else
+      pkgs.kmod;
 
-    root="$TMPDIR/initramfs-root"
-    mkdir -p "$root"/{bin,sbin,proc,sys,dev,run,newroot}
+  mkGondolinInitramfs =
+    { modulesTree ? null }:
+    pkgs.runCommand "gondolin-initramfs"
+      {
+        nativeBuildInputs = [
+          pkgs.cpio
+          pkgs.findutils
+          pkgs.lz4
+        ];
+      } ''
+      set -euo pipefail
 
-    cp ${busyboxPackage}/bin/busybox "$root/bin/busybox"
-    chmod 0755 "$root/bin/busybox"
+      root="$TMPDIR/initramfs-root"
+      mkdir -p "$root"/{bin,sbin,proc,sys,dev,run,newroot}
 
-    for cmd in \
-      sh mount umount mkdir sleep dmesg switch_root modprobe \
-      cat echo ls test; do
-      ln -s busybox "$root/bin/$cmd"
-    done
+      cp ${busyboxPackage}/bin/busybox "$root/bin/busybox"
+      chmod 0755 "$root/bin/busybox"
 
-    cat > "$root/init" <<'EOF'
-    #!/bin/sh
-    set -eu
+      ${lib.optionalString (modulesTree != null) ''
+        if [ -d "${modulesTree}/lib/modules" ]; then
+          mkdir -p "$root/lib"
+          cp -a "${modulesTree}/lib/modules" "$root/lib/modules"
+        fi
+      ''}
 
-    export PATH=/bin:/sbin
+      for cmd in \
+        sh mount umount mkdir sleep dmesg switch_root \
+        cat echo ls test readlink; do
+        ln -s busybox "$root/bin/$cmd"
+      done
 
-    log() {
-      echo "[gondolin-initramfs] $*"
-    }
+      cp ${kmodPackage}/bin/modprobe "$root/bin/modprobe"
+      chmod 0755 "$root/bin/modprobe"
 
-    failure_shell() {
-      reason="$1"
-      log "ERROR: $reason"
-      log "Boot failed; dropping to emergency shell"
-      exec sh
-    }
+      cat > "$root/init" <<'EOF'
+      #!/bin/sh
+      set -eu
 
-    mkdir -p /proc /sys /dev /run /newroot
+      export PATH=/bin:/sbin
 
-    mount -t proc proc /proc || failure_shell "failed to mount /proc"
-    mount -t sysfs sysfs /sys || failure_shell "failed to mount /sys"
-    mount -t devtmpfs devtmpfs /dev || failure_shell "failed to mount /dev"
-    mount -t tmpfs tmpfs /run || failure_shell "failed to mount /run"
+      log() {
+        echo "[gondolin-initramfs] $*"
+      }
 
-    modprobe virtio_blk 2>/dev/null || log "modprobe virtio_blk failed or not needed"
-    modprobe ext4 2>/dev/null || log "modprobe ext4 failed or not needed"
+      failure_shell() {
+        reason="$1"
+        log "ERROR: $reason"
+        log "Boot failed; dropping to emergency shell"
+        exec sh
+      }
 
-    wait_limit=30
-    wait_count=0
-    while [ ! -b /dev/vda ] && [ "$wait_count" -lt "$wait_limit" ]; do
-      log "waiting for /dev/vda ($wait_count/$wait_limit)"
-      sleep 1
-      wait_count=$((wait_count + 1))
-    done
+      mkdir -p /proc /sys /dev /run /newroot
 
-    [ -b /dev/vda ] || failure_shell "timed out waiting for /dev/vda"
+      mount -t proc proc /proc || failure_shell "failed to mount /proc"
+      mount -t sysfs sysfs /sys || failure_shell "failed to mount /sys"
+      mount -t devtmpfs devtmpfs /dev || failure_shell "failed to mount /dev"
+      mount -t tmpfs tmpfs /run || failure_shell "failed to mount /run"
 
-    mount -t ext4 /dev/vda /newroot || failure_shell "failed to mount /dev/vda on /newroot"
+      modprobe virtio_mmio 2>/dev/null || log "modprobe virtio_mmio failed or not needed"
+      modprobe virtio_blk 2>/dev/null || log "modprobe virtio_blk failed or not needed"
+      modprobe ext4 2>/dev/null || log "modprobe ext4 failed or not needed"
 
-    mkdir -p /newroot/proc /newroot/sys /newroot/dev /newroot/run
+      wait_limit=30
+      wait_count=0
+      while [ ! -b /dev/vda ] && [ "$wait_count" -lt "$wait_limit" ]; do
+        log "waiting for /dev/vda ($wait_count/$wait_limit)"
+        sleep 1
+        wait_count=$((wait_count + 1))
+      done
 
-    if [ -x /newroot/sbin/init ]; then
-      log "switch_root -> /sbin/init"
-      exec switch_root /newroot /sbin/init
-    fi
+      [ -b /dev/vda ] || failure_shell "timed out waiting for /dev/vda"
 
-    if [ -x /newroot/init ]; then
-      log "switch_root -> /init"
-      exec switch_root /newroot /init
-    fi
+      mount -t ext4 /dev/vda /newroot || failure_shell "failed to mount /dev/vda on /newroot"
 
-    failure_shell "no init found at /sbin/init or /init"
-    EOF
+      mkdir -p /newroot/proc /newroot/sys /newroot/dev /newroot/run
 
-    chmod 0755 "$root/init"
+      if [ -x /newroot/sbin/init ]; then
+        log "switch_root -> /sbin/init"
+        exec switch_root /newroot /sbin/init
+      fi
 
-    mkdir -p "$out"
+      if [ -x /newroot/init ]; then
+        log "switch_root -> /init"
+        exec switch_root /newroot /init
+      fi
 
-    (
-      cd "$root"
-      find . -mindepth 1 -print | sort | cpio --quiet -o -H newc
-    ) | lz4 -l -9 > "$out/initramfs.cpio.lz4"
-  '';
+      if [ -L /newroot/nix/var/nix/profiles/system-1-link ]; then
+        system_link_target=$(readlink /newroot/nix/var/nix/profiles/system-1-link || true)
+        if [ -n "$system_link_target" ] && [ -x "/newroot$system_link_target/init" ]; then
+          rel_init="$system_link_target/init"
+          log "switch_root -> $rel_init"
+          exec switch_root /newroot "$rel_init"
+        fi
+      fi
+
+      failure_shell "no init found at /sbin/init, /init, or system-1-link target init"
+      EOF
+
+      chmod 0755 "$root/init"
+
+      mkdir -p "$out"
+
+      (
+        cd "$root"
+        find . -mindepth 1 -print | sort | cpio --quiet -o -H newc
+      ) | lz4 -l -9 > "$out/initramfs.cpio.lz4"
+    '';
 in
 {
   inherit mkGondolinInitramfs;
@@ -122,7 +151,7 @@ in
       };
 
       kernelPath = "${config.system.build.kernel}/${config.system.boot.loader.kernelFile}";
-      initramfsPath = "${mkGondolinInitramfs}/initramfs.cpio.lz4";
+      initramfsPath = "${mkGondolinInitramfs { modulesTree = config.system.modulesTree; }}/initramfs.cpio.lz4";
       manifestConfigJson = builtins.toJSON (
         {
           inherit arch rootfsLabel;
@@ -172,3 +201,4 @@ in
         }' > "$out/manifest.json"
     '';
 }
+
