@@ -1,87 +1,49 @@
 # agentix
 
-> Your AI agents, packaged with Nix
+> Your AI agents, packaged with Nix.
 
-**agentix** is a unified Nix flake for popular AI CLI tools:
-- **codex-cli** - OpenAI Codex CLI
-- **claude-code** - Anthropic's Claude Code CLI
-- **gemini-cli** - Google's Gemini CLI
-- **crush** - Charmbracelet's Crush AI coding agent
-- **opencode** - Anomaly's OpenCode AI coding agent
-- **pi** - pi.dev minimal terminal-based coding agent
-- **gondolin** - Earendil Works' local Linux micro-VM sandbox
+`agentix` is a single Nix flake that bundles multiple tools commonly used by AI agents
+(coding CLIs and a local VM sandbox), so you can install, run, and pin them from one place.
+
+## Available packages
+
+| Package | Binary | Version | Description |
+|---------|--------|---------|-------------|
+| `codex-cli` | `codex` | 0.101.0 | OpenAI Codex CLI tool |
+| `claude-code` | `claude` | 2.1.41 | Anthropic's official CLI for Claude |
+| `gemini-cli` | `gemini` | 0.28.2 | Google's Gemini AI CLI |
+| `crush` | `crush` | 0.22.1 | Charmbracelet's AI coding agent |
+| `opencode` | `opencode` | 1.1.64 | Anomaly's AI coding agent |
+| `pi` | `pi` | 0.52.10 | pi.dev minimal terminal-based coding agent |
+| `gondolin` | `gondolin` | 0.2.1 | Local Linux micro-VM sandbox for AI agents |
+| `default` | all | - | Combined package with all tools |
+
+Package versions are continuously refreshed via the repository update workflow.
 
 Inspired by [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) and [claude-code-nix](https://github.com/sadjow/claude-code-nix).
 
-## Features
+## Quick start
 
-- ✨ Seven AI agents in one flake
-- 🔄 Automatic hourly updates via GitHub Actions
-- 📦 Individual or combined installation
-- 🎯 Multi-platform support (Linux x86_64/ARM64, macOS ARM64)
-- 🔒 Reproducible builds with locked dependencies
-
-## Quick Start
-
-### Install all tools
+Install everything:
 
 ```bash
 nix profile install github:luizribeiro/agentix
 ```
 
-### Install individual tools
+Install one package:
 
 ```bash
-# Just codex
 nix profile install github:luizribeiro/agentix#codex-cli
-
-# Just claude
-nix profile install github:luizribeiro/agentix#claude-code
-
-# Just gemini
-nix profile install github:luizribeiro/agentix#gemini-cli
-
-# Just crush
-nix profile install github:luizribeiro/agentix#crush
-
-# Just opencode
-nix profile install github:luizribeiro/agentix#opencode
-
-# Just pi
-nix profile install github:luizribeiro/agentix#pi
-
-# Just gondolin
-nix profile install github:luizribeiro/agentix#gondolin
 ```
 
-### Run without installing
+Run one app without installing:
 
 ```bash
-# Run codex directly
 nix run github:luizribeiro/agentix#codex
-
-# Run claude directly
-nix run github:luizribeiro/agentix#claude
-
-# Run gemini directly
-nix run github:luizribeiro/agentix#gemini
-
-# Run crush directly
-nix run github:luizribeiro/agentix#crush
-
-# Run opencode directly
-nix run github:luizribeiro/agentix#opencode
-
-# Run pi directly
-nix run github:luizribeiro/agentix#pi
-
-# Run gondolin directly
 nix run github:luizribeiro/agentix#gondolin
 ```
 
-## Usage in Other Flakes
-
-### Using the overlay
+## Use in another flake (overlay)
 
 ```nix
 {
@@ -114,43 +76,9 @@ nix run github:luizribeiro/agentix#gondolin
 }
 ```
 
-### Using packages directly
+## Gondolin NixOS guest module
 
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    agentix.url = "github:luizribeiro/agentix";
-  };
-
-  outputs = { self, nixpkgs, agentix }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
-    in {
-      devShells.${system}.default = pkgs.mkShell {
-        packages = [
-          agentix.packages.${system}.codex-cli
-          agentix.packages.${system}.claude-code
-          agentix.packages.${system}.gemini-cli
-          agentix.packages.${system}.crush
-          agentix.packages.${system}.opencode
-          agentix.packages.${system}.pi
-          agentix.packages.${system}.gondolin
-        ];
-      };
-    };
-}
-```
-
-## Gondolin NixOS Guest Module
-
-Agentix also exports a NixOS module that builds Gondolin-compatible guest assets from NixOS.
-
-### Import the module
+Agentix exports `nixosModules.gondolin-guest` to build Gondolin-compatible guest assets from NixOS.
 
 ```nix
 {
@@ -181,123 +109,39 @@ Agentix also exports a NixOS module that builds Gondolin-compatible guest assets
 }
 ```
 
-### Build assets
+Build guest assets:
 
 ```bash
 nix build .#nixosConfigurations.gondolin-guest.config.system.build.gondolinAssets
 ```
 
-### Run Gondolin with those assets
+Run Gondolin with those assets:
 
 ```bash
 GONDOLIN_GUEST_DIR="$(readlink -f result)" nix run .#gondolin -- bash
 ```
 
-### Notes and current limitations
-
-- Linux-only guest asset build path (x86_64-linux and aarch64-linux).
-- `virtualisation.gondolin.guest.includeOpenSSH = true` provides compatibility for `vm.enableSsh()`.
-- Do **not** set `services.openssh.enable = true` with this module; Gondolin manages sshd lifecycle.
-- `sandboxingress` support is intentionally deferred for now.
-
-### Development validation checklist
-
-Useful smoke commands while iterating:
-
-```bash
-ASSETS="$(nix path-info .#nixosConfigurations.gondolin-guest-test.config.system.build.gondolinAssets)"
-
-GONDOLIN_GUEST_DIR="$ASSETS" nix run .#gondolin -- exec -- /bin/true
-GONDOLIN_GUEST_DIR="$ASSETS" nix run .#gondolin -- exec -- /bin/sh -lc 'echo sh-ok'
-GONDOLIN_GUEST_DIR="$ASSETS" nix run .#gondolin -- exec -- /bin/bash -lc 'echo bash-ok'
-
-# Runtime smoke checks
-nix build .#checks.x86_64-linux.gondolin-runtime-smoke
-```
-
-## Available Packages
-
-| Package | Binary | Version | License | Description |
-|---------|--------|---------|---------|-------------|
-| `codex-cli` | `codex` | 0.101.0 | Unfree | OpenAI Codex CLI tool |
-| `claude-code` | `claude` | 2.1.41 | Unfree | Anthropic's official CLI for Claude |
-| `gemini-cli` | `gemini` | 0.28.2 | Apache 2.0 | Google's Gemini AI CLI |
-| `crush` | `crush` | 0.22.1 | MIT | Charmbracelet's AI coding agent |
-| `opencode` | `opencode` | 1.1.64 | MIT | Anomaly's AI coding agent |
-| `pi` | `pi` | 0.52.10 | MIT | pi.dev minimal terminal-based coding agent |
-| `gondolin` | `gondolin` | 0.2.1 | Apache 2.0 | Local Linux micro-VM sandbox for AI agents |
-| `default` | All | - | Mixed | Combined package with all seven tools |
-
-## Supported Platforms
-
-- `aarch64-darwin` - macOS on Apple Silicon (M1/M2/M3)
-- `aarch64-linux` - Linux on ARM64
-- `x86_64-linux` - Linux on x86_64
-
-## Using direnv
-
-This repository includes a `.envrc` file for automatic development environment loading with [direnv](https://direnv.net/):
-
-```bash
-# Allow direnv to load the flake
-direnv allow
-
-# The development shell will now load automatically when you cd into the directory
-# You'll have access to: nixpkgs-fmt, nix-prefetch-git, nodejs_22, jq
-```
-
-If you don't have direnv installed:
-```bash
-# NixOS
-nix-env -iA nixpkgs.direnv
-
-# With nix profile
-nix profile install nixpkgs#direnv
-
-# Then add to your shell rc (~/.bashrc, ~/.zshrc, etc.)
-eval "$(direnv hook bash)"  # or zsh, fish, etc.
-```
+Notes:
+- `virtualisation.gondolin.guest.includeOpenSSH = true` supports `vm.enableSsh()`.
+- Do not enable `services.openssh`; Gondolin manages sshd lifecycle itself.
+- `sandboxingress` is not included yet.
 
 ## Development
 
-### Building locally
-
 ```bash
-# Build individual packages
-nix build .#codex-cli
-nix build .#claude-code
-nix build .#gemini-cli
-nix build .#crush
-nix build .#opencode
-nix build .#pi
-nix build .#gondolin
+# optional: auto-load dev shell in this repo
+direnv allow
 
-# Build all tools
-nix build .#default
+# enter development environment
+nix develop
 
-# Check flake
+# run checks
 nix flake check
 ```
 
-### Development shell
+## Updating packages
 
 ```bash
-nix develop
-```
-
-Includes:
-- `nixpkgs-fmt` - Nix code formatter
-- `nix-prefetch-git` - Git repository prefetcher
-- `nodejs_22` - Node.js for testing
-- `jq` - JSON processor
-- `nushell` - Shell for running update scripts
-
-### Updating packages
-
-The workflow automatically updates packages hourly. To manually update a package, use the provided Nushell script:
-
-```bash
-# Update a specific package
 ./scripts/update-package.nu codex-cli
 ./scripts/update-package.nu claude-code
 ./scripts/update-package.nu gemini-cli
@@ -306,100 +150,17 @@ The workflow automatically updates packages hourly. To manually update a package
 ./scripts/update-package.nu pi
 ./scripts/update-package.nu gondolin
 
-# Verify gondolin + gondolin-guest-bins lockstep
+# verify gondolin + gondolin-guest-bins lockstep
 ./scripts/update-package.nu --check-lockstep
 ```
 
-The script will:
-1. Fetch the latest version from npm
-2. Compare with the current version
-3. If different, calculate new hashes and update the package file
-4. Output whether the package was updated
+When updating `gondolin`, the script also synchronizes `packages/gondolin-guest-bins/default.nix`.
 
-**How it works:**
-- For `codex-cli` and `claude-code` (FOD packages): Fetches tarball hash using `nix-prefetch-url`
-- For `pi` and `gondolin` (npm FOD): Fetches tarball hash and extracts node_modules outputHash from build output
-- `gondolin` updates also synchronize `packages/gondolin-guest-bins/default.nix` to the same version/source revision
-- For `gemini-cli` (buildNpmPackage): Builds twice to extract source and npmDeps hashes from error output
-- For `crush` (buildGoModule): Fetches from GitHub and extracts vendor hash from build output
-- For `opencode` (bun FOD): Fetches from GitHub and extracts source and node_modules hashes from build output
+## Notes
 
-See [scripts/update-package.nu](scripts/update-package.nu) for implementation details.
-
-## Automatic Updates
-
-This flake uses GitHub Actions to automatically check for updates every hour:
-
-1. Runs `scripts/update-package.nu` for each package
-2. The script fetches latest versions from npm and updates package files
-3. Runs `nix flake check` to verify builds
-4. Auto-commits and pushes changes if tests pass
-
-The update logic is centralized in [scripts/update-package.nu](scripts/update-package.nu) and called by [.github/workflows/update.yml](.github/workflows/update.yml).
-
-## Project Structure
-
-```
-.
-├── flake.nix                    # Main flake definition
-├── flake.lock                   # Locked dependencies
-├── .envrc                       # direnv configuration
-├── scripts/
-│   └── update-package.nu        # Package update script (Nushell)
-├── packages/
-│   ├── codex-cli/
-│   │   └── default.nix          # codex-cli package
-│   ├── claude-code/
-│   │   └── default.nix          # claude-code package
-│   ├── gemini-cli/
-│   │   └── default.nix          # gemini-cli package
-│   ├── crush/
-│   │   └── default.nix          # crush package
-│   ├── opencode/
-│   │   ├── default.nix          # opencode package
-│   │   ├── models-dev.nix       # models-dev dependency
-│   │   └── *.patch              # build patches
-│   ├── pi/
-│   │   └── default.nix          # pi package
-│   └── gondolin/
-│       └── default.nix          # gondolin package
-├── .github/
-│   └── workflows/
-│       └── update.yml           # Auto-update workflow
-└── README.md
-```
-
-## License Notes
-
-- **codex-cli**: Unfree license (requires `config.allowUnfree = true`)
-- **claude-code**: Unfree/Proprietary license (requires `config.allowUnfree = true`)
-- **gemini-cli**: Apache 2.0 (free and open source)
-- **crush**: MIT (free and open source)
-- **opencode**: MIT (free and open source)
-- **pi**: MIT (free and open source)
-- **gondolin**: Apache 2.0 (free and open source)
-
-When using this flake, make sure to set `config.allowUnfree = true` in your nixpkgs configuration if you want to use codex-cli or claude-code.
+- `codex-cli` and `claude-code` are unfree packages (`config.allowUnfree = true`).
+- Automatic updates run in `.github/workflows/update.yml`.
 
 ## Contributing
 
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with `nix flake check`
-5. Submit a pull request
-
-## Related Projects
-
-- [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) - Original codex-cli Nix package
-- [claude-code-nix](https://github.com/sadjow/claude-code-nix) - Original claude-code Nix package
-- [nixpkgs gemini-cli](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ge/gemini-cli/package.nix) - Official nixpkgs gemini-cli
-
-## Acknowledgments
-
-Special thanks to:
-- [@sadjow](https://github.com/sadjow) for the original codex-cli-nix and claude-code-nix implementations
-- The NixOS community for gemini-cli packaging
-- OpenAI, Anthropic, Google, and Earendil Works for their amazing AI tools
+PRs welcome. Please run `nix flake check` before submitting.
