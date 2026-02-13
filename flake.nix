@@ -116,6 +116,14 @@
             inherit nixpkgs system;
             module = self.nixosModules.gondolin-guest;
           };
+
+          gondolin-assets-layout = import ./tests/nix/gondolin-assets-layout.nix {
+            inherit nixpkgs system;
+          };
+
+          gondolin-assets-manifest-schema = import ./tests/nix/gondolin-assets-manifest-schema.nix {
+            inherit nixpkgs system;
+          };
         };
 
         devShells.default = pkgs.mkShell {
