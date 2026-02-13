@@ -210,6 +210,23 @@ in
       ++ lib.optionals cfg.includeOpenSSH [ pkgs.openssh ]
       ++ cfg.extraPackages;
 
+    environment.etc = lib.mkIf cfg.includeOpenSSH {
+      "ssh/sshd_config".text = "";
+    };
+
+    users.groups = lib.mkIf cfg.includeOpenSSH {
+      sshd = { };
+    };
+
+    users.users = lib.mkIf cfg.includeOpenSSH {
+      sshd = {
+        isSystemUser = true;
+        group = "sshd";
+        home = "/var/empty";
+        description = "sshd privilege separation user";
+      };
+    };
+
     systemd.tmpfiles.rules =
       [
         "L+ /bin/sh - - - - /run/current-system/sw/bin/sh"
