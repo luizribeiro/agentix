@@ -57,6 +57,7 @@ let
 
     outputHash = {
       "aarch64-darwin" = "sha256-OIkKj1iMI/kRdW+E2yJSbqmuGVFwN1R6gAIEBmLMQpY=";
+      "aarch64-linux" = "sha256-1xECeyPPvQpcDu1wV+oArnbQes3nXy0znd3CKpZ9BWI=";
       "x86_64-linux" = "sha256-1xECeyPPvQpcDu1wV+oArnbQes3nXy0znd3CKpZ9BWI=";
     }.${stdenvNoCC.system};
     outputHashAlgo = "sha256";
@@ -89,7 +90,7 @@ stdenvNoCC.mkDerivation {
     homepage = "https://pi.dev";
     license = licenses.mit;
     maintainers = [ ];
-    platforms = [ "aarch64-darwin" "x86_64-linux" ];
+    platforms = [ "aarch64-darwin" "aarch64-linux" "x86_64-linux" ];
     mainProgram = "pi";
   };
 }
