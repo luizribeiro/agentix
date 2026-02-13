@@ -110,8 +110,22 @@ jobs:
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
 
+      - name: Update gondolin
+        id: update-gondolin
+        run: |
+          OUTPUT=$(nu scripts/update-package.nu gondolin)
+          echo "$OUTPUT"
+
+          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
+          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
+          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+
       - name: Test builds
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true'
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true' || steps.update-gondolin.outputs.updated == 'true'
         run: |
           echo "Testing package builds..."
           nix flake check --print-build-logs
@@ -124,7 +138,8 @@ jobs:
              [ "${{ steps.update-gemini.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-crush.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-opencode.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
+             [ "${{ steps.update-pi.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-gondolin.outputs.updated }}" == "true" ]; then
             echo "any-updated=true" >> $GITHUB_OUTPUT
           else
             echo "any-updated=false" >> $GITHUB_OUTPUT
@@ -157,6 +172,10 @@ jobs:
 
           if [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
+          fi
+
+          if [ "${{ steps.update-gondolin.outputs.updated }}" == "true" ]; then
+            MSG="$MSG\n- gondolin: ${{ steps.update-gondolin.outputs.current }} → ${{ steps.update-gondolin.outputs.latest }}"
           fi
 
           echo -e "$MSG" > commit-message.txt

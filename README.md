@@ -9,12 +9,13 @@
 - **crush** - Charmbracelet's Crush AI coding agent
 - **opencode** - Anomaly's OpenCode AI coding agent
 - **pi** - pi.dev minimal terminal-based coding agent
+- **gondolin** - Earendil Works' local Linux micro-VM sandbox
 
 Inspired by [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) and [claude-code-nix](https://github.com/sadjow/claude-code-nix).
 
 ## Features
 
-- ✨ Six AI agents in one flake
+- ✨ Seven AI agents in one flake
 - 🔄 Automatic hourly updates via GitHub Actions
 - 📦 Individual or combined installation
 - 🎯 Multi-platform support (Linux x86_64/ARM64, macOS ARM64)
@@ -48,6 +49,9 @@ nix profile install github:luizribeiro/agentix#opencode
 
 # Just pi
 nix profile install github:luizribeiro/agentix#pi
+
+# Just gondolin
+nix profile install github:luizribeiro/agentix#gondolin
 ```
 
 ### Run without installing
@@ -70,6 +74,9 @@ nix run github:luizribeiro/agentix#opencode
 
 # Run pi directly
 nix run github:luizribeiro/agentix#pi
+
+# Run gondolin directly
+nix run github:luizribeiro/agentix#gondolin
 ```
 
 ## Usage in Other Flakes
@@ -100,6 +107,7 @@ nix run github:luizribeiro/agentix#pi
           crush
           opencode
           pi
+          gondolin
         ];
       };
     };
@@ -131,6 +139,7 @@ nix run github:luizribeiro/agentix#pi
           agentix.packages.${system}.crush
           agentix.packages.${system}.opencode
           agentix.packages.${system}.pi
+          agentix.packages.${system}.gondolin
         ];
       };
     };
@@ -147,7 +156,8 @@ nix run github:luizribeiro/agentix#pi
 | `crush` | `crush` | 0.22.1 | MIT | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.1.64 | MIT | Anomaly's AI coding agent |
 | `pi` | `pi` | 0.52.10 | MIT | pi.dev minimal terminal-based coding agent |
-| `default` | All | - | Mixed | Combined package with all six tools |
+| `gondolin` | `gondolin` | 0.2.1 | Apache 2.0 | Local Linux micro-VM sandbox for AI agents |
+| `default` | All | - | Mixed | Combined package with all seven tools |
 
 ## Supported Platforms
 
@@ -191,6 +201,7 @@ nix build .#gemini-cli
 nix build .#crush
 nix build .#opencode
 nix build .#pi
+nix build .#gondolin
 
 # Build all tools
 nix build .#default
@@ -224,6 +235,7 @@ The workflow automatically updates packages hourly. To manually update a package
 ./scripts/update-package.nu crush
 ./scripts/update-package.nu opencode
 ./scripts/update-package.nu pi
+./scripts/update-package.nu gondolin
 ```
 
 The script will:
@@ -234,7 +246,7 @@ The script will:
 
 **How it works:**
 - For `codex-cli` and `claude-code` (FOD packages): Fetches tarball hash using `nix-prefetch-url`
-- For `pi` (npm FOD): Fetches tarball hash and extracts node_modules outputHash from build output
+- For `pi` and `gondolin` (npm FOD): Fetches tarball hash and extracts node_modules outputHash from build output
 - For `gemini-cli` (buildNpmPackage): Builds twice to extract source and npmDeps hashes from error output
 - For `crush` (buildGoModule): Fetches from GitHub and extracts vendor hash from build output
 - For `opencode` (bun FOD): Fetches from GitHub and extracts source and node_modules hashes from build output
@@ -274,8 +286,10 @@ The update logic is centralized in [scripts/update-package.nu](scripts/update-pa
 │   │   ├── default.nix          # opencode package
 │   │   ├── models-dev.nix       # models-dev dependency
 │   │   └── *.patch              # build patches
-│   └── pi/
-│       └── default.nix          # pi package
+│   ├── pi/
+│   │   └── default.nix          # pi package
+│   └── gondolin/
+│       └── default.nix          # gondolin package
 ├── .github/
 │   └── workflows/
 │       └── update.yml           # Auto-update workflow
@@ -290,6 +304,7 @@ The update logic is centralized in [scripts/update-package.nu](scripts/update-pa
 - **crush**: MIT (free and open source)
 - **opencode**: MIT (free and open source)
 - **pi**: MIT (free and open source)
+- **gondolin**: Apache 2.0 (free and open source)
 
 When using this flake, make sure to set `config.allowUnfree = true` in your nixpkgs configuration if you want to use codex-cli or claude-code.
 
@@ -314,4 +329,4 @@ Contributions welcome! Please:
 Special thanks to:
 - [@sadjow](https://github.com/sadjow) for the original codex-cli-nix and claude-code-nix implementations
 - The NixOS community for gemini-cli packaging
-- OpenAI, Anthropic, and Google for their amazing AI tools
+- OpenAI, Anthropic, Google, and Earendil Works for their amazing AI tools

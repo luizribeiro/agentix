@@ -40,9 +40,14 @@ def main [package: string] {
             file: "packages/pi/default.nix",
             type: "npmFod"
         },
+        "gondolin" => {
+            npm_name: "@earendil-works/gondolin",
+            file: "packages/gondolin/default.nix",
+            type: "npmFod"
+        },
         _ => {
             print $"Error: Unknown package '($package)'"
-            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi"
+            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi, gondolin"
             exit 1
         }
     }
@@ -138,7 +143,7 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
     true
 }
 
-# Update an npm FOD package (pi) - has fetchurl hash + per-platform outputHash for node_modules
+# Update an npm FOD package (pi, gondolin) - has fetchurl hash + per-platform outputHash for node_modules
 def update_npmfod_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
     let system = (nix eval --impure --expr builtins.currentSystem --raw | complete | get stdout | str trim)
     print $"Detected system: ($system)"
@@ -502,6 +507,7 @@ def update_readme [package: string, version: string] {
         "crush" => '| `crush` | `crush` |',
         "opencode" => '| `opencode` | `opencode` |',
         "pi" => '| `pi` | `pi` |',
+        "gondolin" => '| `gondolin` | `gondolin` |',
         _ => {
             print $"Warning: Unknown package ($package) for README update"
             return

@@ -1,5 +1,5 @@
 {
-  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, crush, pi)";
+  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, crush, opencode, pi, gondolin)";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -15,6 +15,7 @@
         crush = final.callPackage ./packages/crush { };
         opencode = final.callPackage ./packages/opencode { };
         pi = final.callPackage ./packages/pi { };
+        gondolin = final.callPackage ./packages/gondolin { };
       };
 
       supportedSystems = [
@@ -41,6 +42,7 @@
           crush = pkgs.crush;
           opencode = pkgs.opencode;
           pi = pkgs.pi;
+          gondolin = pkgs.gondolin;
 
           default = pkgs.buildEnv {
             name = "agentix";
@@ -51,6 +53,7 @@
               pkgs.crush
               pkgs.opencode
               pkgs.pi
+              pkgs.gondolin
             ];
             meta = {
               description = "agentix - Your AI agents, packaged with Nix";
@@ -90,6 +93,11 @@
             program = "${pkgs.pi}/bin/pi";
           };
 
+          gondolin = {
+            type = "app";
+            program = "${pkgs.gondolin}/bin/gondolin";
+          };
+
           default = self.apps.${system}.claude;
         };
 
@@ -117,6 +125,7 @@
             echo "  ./scripts/update-package.nu crush"
             echo "  ./scripts/update-package.nu opencode"
             echo "  ./scripts/update-package.nu pi"
+            echo "  ./scripts/update-package.nu gondolin"
             echo ""
             echo "Build packages:"
             echo "  nix build .#codex-cli"
@@ -125,7 +134,8 @@
             echo "  nix build .#crush"
             echo "  nix build .#opencode"
             echo "  nix build .#pi"
-            echo "  nix build .#default  # agentix with all six tools"
+            echo "  nix build .#gondolin"
+            echo "  nix build .#default  # agentix with all seven tools"
           '';
         };
       });
