@@ -26,6 +26,26 @@
         "aarch64-darwin"
         "x86_64-linux"
       ];
+
+      mkGondolinGuestTest = system: nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          self.nixosModules.gondolin-guest
+          ({ ... }: {
+            nixpkgs.overlays = [ overlay ];
+
+            virtualisation.gondolin.guest.enable = true;
+
+            fileSystems."/" = {
+              device = "/dev/disk/by-label/gondolin-root";
+              fsType = "ext4";
+            };
+
+            boot.loader.grub.devices = [ "/dev/vda" ];
+            system.stateVersion = "25.11";
+          })
+        ];
+      };
     in
     {
       overlays.default = overlay;
@@ -35,25 +55,9 @@
       };
 
       nixosConfigurations = {
-        gondolin-guest-test = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          modules = [
-            self.nixosModules.gondolin-guest
-            ({ ... }: {
-              nixpkgs.overlays = [ overlay ];
+        gondolin-guest-test-x86_64-linux = mkGondolinGuestTest "x86_64-linux";
+        gondolin-guest-test-aarch64-linux = mkGondolinGuestTest "aarch64-linux";
 
-              virtualisation.gondolin.guest.enable = true;
-
-              fileSystems."/" = {
-                device = "/dev/disk/by-label/gondolin-root";
-                fsType = "ext4";
-              };
-
-              boot.loader.grub.devices = [ "/dev/vda" ];
-              system.stateVersion = "25.11";
-            })
-          ];
-        };
       };
     } //
     flake-utils.lib.eachSystem supportedSystems (system:
@@ -153,7 +157,7 @@
 
           gondolin-runtime-smoke =
             let
-              assets = self.nixosConfigurations.gondolin-guest-test.config.system.build.gondolinAssets;
+              assets = self.nixosConfigurations.gondolin-guest-test-x86_64-linux.config.system.build.gondolinAssets;
             in
             pkgs.runCommand "gondolin-runtime-smoke"
               {

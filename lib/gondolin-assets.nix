@@ -1,8 +1,6 @@
 { lib, pkgs }:
 
 let
-  makeDiskImage = import "${pkgs.path}/nixos/lib/make-disk-image.nix";
-
   busyboxPackage =
     if pkgs.stdenv.hostPlatform.isLinux then
       assert pkgs.pkgsStatic ? busybox;
@@ -137,18 +135,48 @@ in
     ,
     }:
     let
-      rootfsImage = makeDiskImage {
-        inherit pkgs lib config;
+      # Intentionally avoid nixos/lib/make-disk-image.nix here.
+      # That path uses vmTools.runInLinuxVM and requires KVM / nested virtualization,
+      # which is not reliably available in all builder environments (e.g. macOS-hosted flows).
+      # Instead, build a plain ext4 rootfs directly from the NixOS toplevel closure.
+      toplevelClosure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
 
-        name = "gondolin-rootfs";
-        format = "raw";
-        baseName = "rootfs";
-        partitionTableType = "none";
-        label = rootfsLabel;
-        installBootLoader = false;
-        copyChannel = false;
-        diskSize = if diskSizeMb == null then "auto" else toString diskSizeMb;
-      };
+      rootfsImage = pkgs.runCommand "gondolin-rootfs" {
+        nativeBuildInputs = [
+          pkgs.coreutils
+          pkgs.e2fsprogs
+        ];
+      } ''
+        set -euo pipefail
+
+        root="$TMPDIR/root"
+        mkdir -p "$root/nix/store" "$root/nix/var/nix/profiles" "$root/etc"
+
+        # Copy full NixOS toplevel closure into the image store.
+        while IFS= read -r p; do
+          [ -n "$p" ] || continue
+          cp -a "$p" "$root/nix/store/"
+        done < ${toplevelClosure}/store-paths
+
+        ln -s ${config.system.build.toplevel} "$root/nix/var/nix/profiles/system-1-link"
+        ln -s system-1-link "$root/nix/var/nix/profiles/system"
+        touch "$root/etc/NIXOS"
+
+        if [ -n "${if diskSizeMb == null then "" else toString diskSizeMb}" ]; then
+          size_mb="${if diskSizeMb == null then "" else toString diskSizeMb}"
+        else
+          used_kb="$(du -s --apparent-size "$root" | cut -f1)"
+          size_mb=$(( (used_kb * 13 / 10) / 1024 + 512 ))
+        fi
+
+        img="$TMPDIR/rootfs.img"
+        truncate -s "''${size_mb}M" "$img"
+
+        mkfs.ext4 -F -L ${lib.escapeShellArg rootfsLabel} -d "$root" "$img"
+
+        mkdir -p "$out"
+        cp "$img" "$out/rootfs.img"
+      '';
 
       kernelPath = "${config.system.build.kernel}/${config.system.boot.loader.kernelFile}";
       initramfsPath = "${mkGondolinInitramfs { modulesTree = config.system.modulesTree; }}/initramfs.cpio.lz4";
