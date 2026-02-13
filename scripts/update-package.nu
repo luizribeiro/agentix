@@ -3,6 +3,7 @@
 # Update a package to its latest npm version
 #
 # Usage: ./scripts/update-package.nu <package-name>
+#        ./scripts/update-package.nu --refresh-hashes [--system <system>]
 # Example: ./scripts/update-package.nu codex-cli
 
 def parse_version [file: string] {
@@ -61,26 +62,8 @@ def sync_gondolin_guest_bins [version: string, hash_override?: string]: nothing 
     true
 }
 
-def main [package?: string, --check-lockstep] {
-    if $check_lockstep {
-        if (check_gondolin_lockstep) {
-            print "updated=false"
-            return
-        }
-
-        exit 1
-    }
-
-    if ($package | is-empty) {
-        print "Error: missing package argument"
-        print "Usage: ./scripts/update-package.nu <package-name>"
-        print "       ./scripts/update-package.nu --check-lockstep"
-        exit 1
-    }
-
-    let package = $package
-    # Package configuration
-    let config = match $package {
+def package_config [package: string] {
+    match $package {
         "codex-cli" => {
             npm_name: "@openai/codex",
             file: "packages/codex-cli/default.nix",
@@ -124,6 +107,100 @@ def main [package?: string, --check-lockstep] {
             exit 1
         }
     }
+}
+
+def refresh_npmfod_hashes [system: string]: nothing -> bool {
+    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    let packages = [ "pi" "gondolin" ]
+
+    for package in $packages {
+        let config = package_config $package
+        let content = open $config.file
+
+        if not ($content | str contains $'"($system)" = "') {
+            print $"Skipping ($package): no outputHash entry for ($system)"
+            continue
+        }
+
+        let updated = (
+            $content
+            | str replace -r $'"($system)" = "sha256-[^"]*"' $'"($system)" = "($fake_hash)"'
+        )
+        $updated | save -f $config.file
+
+        print $"Building ($package) to compute outputHash for ($system)..."
+        let build_result = (nix build $".#($package)" --system $system --no-link | complete)
+        let got_lines = (
+            $build_result.stderr
+            | lines
+            | where $it =~ "got:"
+        )
+
+        if ($got_lines | is-empty) {
+            print $"Error: Could not extract outputHash for ($package) on ($system)"
+            print $build_result.stderr
+            return false
+        }
+
+        let fod_hash = (
+            $got_lines
+            | first
+            | str trim
+            | split row "got:"
+            | get 1
+            | str trim
+        )
+
+        let content2 = open $config.file
+        let updated2 = (
+            $content2
+            | str replace $'"($system)" = "($fake_hash)"' $'"($system)" = "($fod_hash)"'
+        )
+        $updated2 | save -f $config.file
+
+        print $"✓ ($package) outputHash for ($system): ($fod_hash)"
+    }
+
+    true
+}
+
+def main [package?: string, --check-lockstep, --refresh-hashes, --system: string] {
+    if $check_lockstep {
+        if (check_gondolin_lockstep) {
+            print "updated=false"
+            return
+        }
+
+        exit 1
+    }
+
+    if $refresh_hashes {
+        let target_system = if ($system | is-empty) {
+            nix eval --impure --expr builtins.currentSystem --raw | complete | get stdout | str trim
+        } else {
+            $system
+        }
+
+        if not (refresh_npmfod_hashes $target_system) {
+            print "updated=false"
+            exit 1
+        }
+
+        print "updated=true"
+        print $"system=($target_system)"
+        return
+    }
+
+    if ($package | is-empty) {
+        print "Error: missing package argument"
+        print "Usage: ./scripts/update-package.nu <package-name>"
+        print "       ./scripts/update-package.nu --check-lockstep"
+        print "       ./scripts/update-package.nu --refresh-hashes [--system <system>]"
+        exit 1
+    }
+
+    let package = $package
+    let config = package_config $package
 
     # Fetch latest version
     let latest_version = if $config.type == "buildGoModule" or $config.type == "bunFod" {

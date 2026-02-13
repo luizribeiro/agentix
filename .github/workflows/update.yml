@@ -6,11 +6,10 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  update:
+  update-versions:
     runs-on: ubuntu-latest
     outputs:
       any-updated: ${{ steps.check.outputs.any-updated }}
-      pi-updated: ${{ steps.update-pi.outputs.updated }}
 
     steps:
       - name: Checkout repository
@@ -195,12 +194,10 @@ jobs:
             README.md
             commit-message.txt
 
-  pi-macos-hash:
-    needs: update
-    if: needs.update.outputs.pi-updated == 'true'
+  hashes-aarch64-darwin:
+    needs: update-versions
+    if: needs.update-versions.outputs.any-updated == 'true'
     runs-on: macos-latest
-    outputs:
-      hash: ${{ steps.compute.outputs.hash }}
 
     steps:
       - name: Checkout repository
@@ -217,27 +214,25 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Compute macOS hash for pi
-        id: compute
+      - name: Install Nushell
         run: |
-          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-          sed -i '' 's|"aarch64-darwin" = "sha256-[^"]*"|"aarch64-darwin" = "'"$FAKE"'"|' packages/pi/default.nix
-          RESULT=$(nix build .#pi --no-link 2>&1 || true)
-          HASH=$(echo "$RESULT" | grep 'got:' | head -1 | awk '{print $2}')
-          if [ -z "$HASH" ]; then
-            echo "Error: Could not extract hash from build output:"
-            echo "$RESULT"
-            exit 1
-          fi
-          echo "Computed aarch64-darwin hash: $HASH"
-          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          nix profile install nixpkgs#nushell
 
-  pi-aarch64-linux-hash:
-    needs: update
-    if: needs.update.outputs.pi-updated == 'true'
+      - name: Refresh hashes (aarch64-darwin)
+        run: |
+          nu scripts/update-package.nu --refresh-hashes --system aarch64-darwin
+
+      - name: Upload hash-updated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: hash-updates-aarch64-darwin
+          path: |
+            packages/
+
+  hashes-aarch64-linux:
+    needs: update-versions
+    if: needs.update-versions.outputs.any-updated == 'true'
     runs-on: ubuntu-24.04-arm
-    outputs:
-      hash: ${{ steps.compute.outputs.hash }}
 
     steps:
       - name: Checkout repository
@@ -254,29 +249,65 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Compute aarch64-linux hash for pi
-        id: compute
+      - name: Install Nushell
         run: |
-          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-          sed -i 's|"aarch64-linux" = "sha256-[^"]*"|"aarch64-linux" = "'"$FAKE"'"|' packages/pi/default.nix
-          RESULT=$(nix build .#pi --no-link 2>&1 || true)
-          HASH=$(echo "$RESULT" | grep 'got:' | head -1 | awk '{print $2}')
-          if [ -z "$HASH" ]; then
-            echo "Error: Could not extract hash from build output:"
-            echo "$RESULT"
-            exit 1
-          fi
-          echo "Computed aarch64-linux hash: $HASH"
-          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          nix profile install nixpkgs#nushell
+
+      - name: Refresh hashes (aarch64-linux)
+        run: |
+          nu scripts/update-package.nu --refresh-hashes --system aarch64-linux
+
+      - name: Upload hash-updated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: hash-updates-aarch64-linux
+          path: |
+            packages/
+
+  hashes-x86_64-linux:
+    needs: update-versions
+    if: needs.update-versions.outputs.any-updated == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download updated files
+        uses: actions/download-artifact@v4
+        with:
+          name: updated-packages
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Install Nushell
+        run: |
+          nix profile install nixpkgs#nushell
+
+      - name: Refresh hashes (x86_64-linux)
+        run: |
+          nu scripts/update-package.nu --refresh-hashes --system x86_64-linux
+
+      - name: Upload hash-updated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: hash-updates-x86_64-linux
+          path: |
+            packages/
 
   commit:
-    needs: [update, pi-macos-hash, pi-aarch64-linux-hash]
+    needs: [update-versions, hashes-aarch64-darwin, hashes-aarch64-linux, hashes-x86_64-linux]
     if: >-
       always() &&
-      needs.update.result == 'success' &&
-      needs.update.outputs.any-updated == 'true' &&
-      (needs.update.outputs.pi-updated != 'true' ||
-       (needs.pi-macos-hash.result == 'success' && needs.pi-aarch64-linux-hash.result == 'success'))
+      needs.update-versions.result == 'success' &&
+      needs.update-versions.outputs.any-updated == 'true' &&
+      needs.hashes-aarch64-darwin.result == 'success' &&
+      needs.hashes-aarch64-linux.result == 'success' &&
+      needs.hashes-x86_64-linux.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -285,38 +316,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download updated files
+      - name: Download version updates
         uses: actions/download-artifact@v4
         with:
           name: updated-packages
 
-      - name: Patch macOS hash for pi
-        if: needs.pi-macos-hash.result == 'success'
-        run: |
-          HASH="${{ needs.pi-macos-hash.outputs.hash }}"
-          if [ -z "$HASH" ]; then
-            echo "Error: macOS hash output is empty"
-            exit 1
-          fi
-          sed -i 's|"aarch64-darwin" = "sha256-[^"]*"|"aarch64-darwin" = "'"$HASH"'"|' packages/pi/default.nix
+      - name: Download aarch64-darwin hash updates
+        uses: actions/download-artifact@v4
+        with:
+          name: hash-updates-aarch64-darwin
+          path: hash-updates/aarch64-darwin
 
-      - name: Patch aarch64-linux hash for pi
-        if: needs.pi-aarch64-linux-hash.result == 'success'
-        run: |
-          HASH="${{ needs.pi-aarch64-linux-hash.outputs.hash }}"
-          if [ -z "$HASH" ]; then
-            echo "Error: aarch64-linux hash output is empty"
-            exit 1
-          fi
-          sed -i 's|"aarch64-linux" = "sha256-[^"]*"|"aarch64-linux" = "'"$HASH"'"|' packages/pi/default.nix
+      - name: Download aarch64-linux hash updates
+        uses: actions/download-artifact@v4
+        with:
+          name: hash-updates-aarch64-linux
+          path: hash-updates/aarch64-linux
 
-      - name: Verify pi hashes are not fake
-        if: needs.update.outputs.pi-updated == 'true'
+      - name: Download x86_64-linux hash updates
+        uses: actions/download-artifact@v4
+        with:
+          name: hash-updates-x86_64-linux
+          path: hash-updates/x86_64-linux
+
+      - name: Merge hash updates
+        run: |
+          cp -a hash-updates/aarch64-darwin/packages/. packages/
+          cp -a hash-updates/aarch64-linux/packages/. packages/
+          cp -a hash-updates/x86_64-linux/packages/. packages/
+
+      - name: Verify no fake hashes remain
         run: |
           FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-          if grep -q "$FAKE" packages/pi/default.nix; then
-            echo "Error: pi default.nix still contains a fake hash"
-            grep "$FAKE" packages/pi/default.nix
+          if grep -R -n "$FAKE" packages/; then
+            echo "Error: fake hash remains in packages"
             exit 1
           fi
 
