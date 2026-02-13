@@ -27,70 +27,20 @@
         "x86_64-linux"
       ];
 
-      defaultGuestArchForSystem = system:
-        if nixpkgs.lib.hasPrefix "aarch64" system then
-          "aarch64"
-        else
-          "x86_64";
+      gondolinGuestModule = import ./modules/gondolin/guest.nix;
 
-      mkGondolinGuestSystem =
-        { system
-        , modules ? [ ]
-        , specialArgs ? { }
-        , arch ? defaultGuestArchForSystem system
-        , rootfsLabel ? "gondolin-root"
-        , includeOpenSSH ? true
-        , diskSizeMb ? null
-        , stateVersion ? "25.11"
-        }:
-        nixpkgs.lib.nixosSystem {
-          inherit system specialArgs;
-          modules = [
-            self.nixosModules.gondolin-guest
-            ({ ... }: {
-              nixpkgs.overlays = [ overlay ];
+      gondolinHelpers = import ./lib/gondolin-helpers.nix {
+        lib = nixpkgs.lib;
+        nixosSystem = nixpkgs.lib.nixosSystem;
+        inherit overlay gondolinGuestModule;
+      };
 
-              virtualisation.gondolin.guest = {
-                enable = true;
-                inherit arch rootfsLabel includeOpenSSH diskSizeMb;
-              };
-
-              fileSystems."/" = {
-                device = "/dev/disk/by-label/${rootfsLabel}";
-                fsType = "ext4";
-              };
-
-              boot.loader.grub.devices = [ "/dev/vda" ];
-              system.stateVersion = stateVersion;
-            })
-          ] ++ modules;
-        };
-
-      mkGondolinAssets =
-        { guestSystem ? null
-        , system ? null
-        , ...
-        }@args:
-        let
-          resolvedGuestSystem =
-            if guestSystem != null then
-              guestSystem
-            else if system != null then
-              mkGondolinGuestSystem (removeAttrs args [ "guestSystem" ])
-            else
-              throw "mkGondolinAssets requires either guestSystem or system";
-        in
-        resolvedGuestSystem.config.system.build.gondolinAssets;
-
-      mkGondolinWithAssets =
-        { pkgs
-        , assets
-        , name ? "gondolin-with-assets"
-        }:
-        pkgs.writeShellScriptBin name ''
-          export GONDOLIN_GUEST_DIR=${assets}
-          exec ${pkgs.gondolin}/bin/gondolin "$@"
-        '';
+      inherit (gondolinHelpers)
+        defaultGuestArchForSystem
+        mkGondolinGuestSystem
+        mkGondolinAssets
+        mkGondolinWithAssets
+        ;
 
       mkGondolinGuestTest = system: mkGondolinGuestSystem {
         inherit system;
@@ -110,7 +60,7 @@
       };
 
       nixosModules = {
-        gondolin-guest = import ./modules/gondolin/guest.nix;
+        gondolin-guest = gondolinGuestModule;
       };
 
       nixosConfigurations = {
