@@ -33,6 +33,28 @@
       nixosModules = {
         gondolin-guest = import ./modules/gondolin/guest.nix;
       };
+
+      nixosConfigurations = {
+        gondolin-guest-test = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            self.nixosModules.gondolin-guest
+            ({ ... }: {
+              nixpkgs.overlays = [ overlay ];
+
+              virtualisation.gondolin.guest.enable = true;
+
+              fileSystems."/" = {
+                device = "/dev/disk/by-label/gondolin-root";
+                fsType = "ext4";
+              };
+
+              boot.loader.grub.devices = [ "/dev/vda" ];
+              system.stateVersion = "25.11";
+            })
+          ];
+        };
+      };
     } //
     flake-utils.lib.eachSystem supportedSystems (system:
       let

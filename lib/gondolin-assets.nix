@@ -104,6 +104,7 @@ in
     , arch
     , rootfsLabel ? "gondolin-root"
     , diskSizeMb ? null
+    , includeOpenSSH ? null
     ,
     }:
     let
@@ -122,6 +123,13 @@ in
 
       kernelPath = "${config.system.build.kernel}/${config.system.boot.loader.kernelFile}";
       initramfsPath = "${mkGondolinInitramfs}/initramfs.cpio.lz4";
+      manifestConfigJson = builtins.toJSON (
+        {
+          inherit arch rootfsLabel;
+        }
+        // lib.optionalAttrs (diskSizeMb != null) { inherit diskSizeMb; }
+        // lib.optionalAttrs (includeOpenSSH != null) { inherit includeOpenSSH; }
+      );
     in
     pkgs.runCommand "gondolin-assets" { } ''
       set -euo pipefail
@@ -141,22 +149,26 @@ in
       initramfs_checksum="$(checksum_file "$out/initramfs.cpio.lz4")"
       rootfs_checksum="$(checksum_file "$out/rootfs.ext4")"
 
-      cat > "$out/manifest.json" <<EOF
-      {
-        "assets": {
-          "kernel": "vmlinuz-virt",
-          "initramfs": "initramfs.cpio.lz4",
-          "rootfs": "rootfs.ext4"
-        },
-        "checksums": {
-          "kernel": "''${kernel_checksum}",
-          "initramfs": "''${initramfs_checksum}",
-          "rootfs": "''${rootfs_checksum}"
-        },
-        "config": {
-          "arch": "${arch}"
-        }
-      }
-      EOF
+      ${pkgs.jq}/bin/jq -n \
+        --arg kernel "vmlinuz-virt" \
+        --arg initramfs "initramfs.cpio.lz4" \
+        --arg rootfs "rootfs.ext4" \
+        --arg kernelChecksum "$kernel_checksum" \
+        --arg initramfsChecksum "$initramfs_checksum" \
+        --arg rootfsChecksum "$rootfs_checksum" \
+        --argjson config '${manifestConfigJson}' \
+        '{
+          assets: {
+            kernel: $kernel,
+            initramfs: $initramfs,
+            rootfs: $rootfs
+          },
+          checksums: {
+            kernel: $kernelChecksum,
+            initramfs: $initramfsChecksum,
+            rootfs: $rootfsChecksum
+          },
+          config: $config
+        }' > "$out/manifest.json"
     '';
 }

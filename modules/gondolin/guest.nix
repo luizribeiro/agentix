@@ -2,6 +2,9 @@
 
 let
   cfg = config.virtualisation.gondolin.guest;
+  gondolinAssetsLib = import ../../lib/gondolin-assets.nix {
+    inherit lib pkgs;
+  };
 
   defaultArch =
     if pkgs.stdenv.hostPlatform.isAarch64 then
@@ -99,6 +102,14 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    system.build.gondolinAssets = gondolinAssetsLib.mkGondolinAssets {
+      inherit config;
+      arch = cfg.arch;
+      rootfsLabel = cfg.rootfsLabel;
+      diskSizeMb = cfg.diskSizeMb;
+      includeOpenSSH = cfg.includeOpenSSH;
+    };
+
     assertions = [
       {
         assertion = pkgs.stdenv.hostPlatform.isLinux;
