@@ -1,6 +1,9 @@
 { nixpkgs ? <nixpkgs> }:
 let
   nixpkgsLib = (import nixpkgs { }).lib;
+  nixosSystem = args: import (nixpkgs + "/nixos/lib/eval-config.nix") ({
+    lib = nixpkgsLib;
+  } // args);
 
   overlay = final: prev:
     {
@@ -35,7 +38,7 @@ let
     , diskSizeMb ? null
     , stateVersion ? "25.11"
     }:
-    nixpkgsLib.nixosSystem {
+    nixosSystem {
       inherit system specialArgs;
       modules = [
         gondolinGuestModule

@@ -221,6 +221,13 @@ in
 }
 ```
 
+Save that as `vm.nix`, then:
+
+```bash
+nix-build vm.nix -A assets
+$(nix-build vm.nix -A gondolin)/bin/gondolin-project exec -- echo hello
+```
+
 Notes:
 - `virtualisation.gondolin.guest.includeOpenSSH = true` supports `vm.enableSsh()`.
 - Do not enable `services.openssh`; Gondolin manages sshd lifecycle itself.
