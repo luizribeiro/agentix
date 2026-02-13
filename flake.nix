@@ -150,6 +150,34 @@
           gondolin-initramfs-content = import ./tests/nix/gondolin-initramfs-content.nix {
             inherit nixpkgs system;
           };
+
+          gondolin-runtime-smoke =
+            let
+              assets = self.nixosConfigurations.gondolin-guest-test.config.system.build.gondolinAssets;
+            in
+            pkgs.runCommand "gondolin-runtime-smoke"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.gnugrep
+                  pkgs.nodejs_22
+                  pkgs.qemu
+                  pkgs.openssh
+                  pkgs.gondolin
+                ];
+              }
+              ''
+                export HOME="$TMPDIR"
+                export GONDOLIN_GUEST_DIR="${assets}"
+                export GONDOLIN_SMOKE_TIMEOUT=45
+                export NODE_PATH="${pkgs.gondolin}/lib/node_modules"
+
+                ${pkgs.bash}/bin/bash ${./tests/runtime/gondolin-smoke.sh}
+                ${pkgs.nodejs_22}/bin/node ${./tests/runtime/gondolin-ssh-smoke.js}
+
+                touch "$out"
+              '';
         };
 
         devShells.default = pkgs.mkShell {
