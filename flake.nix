@@ -8,15 +8,19 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      overlay = final: prev: {
-        codex-cli = final.callPackage ./packages/codex-cli { };
-        claude-code = final.callPackage ./packages/claude-code { };
-        gemini-cli = final.callPackage ./packages/gemini-cli { };
-        crush = final.callPackage ./packages/crush { };
-        opencode = final.callPackage ./packages/opencode { };
-        pi = final.callPackage ./packages/pi { };
-        gondolin = final.callPackage ./packages/gondolin { };
-      };
+      overlay = final: prev:
+        {
+          codex-cli = final.callPackage ./packages/codex-cli { };
+          claude-code = final.callPackage ./packages/claude-code { };
+          gemini-cli = final.callPackage ./packages/gemini-cli { };
+          crush = final.callPackage ./packages/crush { };
+          opencode = final.callPackage ./packages/opencode { };
+          pi = final.callPackage ./packages/pi { };
+          gondolin = final.callPackage ./packages/gondolin { };
+        }
+        // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
+          gondolin-guest-bins = final.callPackage ./packages/gondolin-guest-bins { };
+        };
 
       supportedSystems = [
         "aarch64-darwin"
@@ -60,6 +64,8 @@
               platforms = supportedSystems;
             };
           };
+        } // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          gondolin-guest-bins = pkgs.gondolin-guest-bins;
         };
 
         apps = {
