@@ -57,7 +57,7 @@ let
 
     outputHash = {
       "aarch64-darwin" = "sha256-OIkKj1iMI/kRdW+E2yJSbqmuGVFwN1R6gAIEBmLMQpY=";
-      "aarch64-linux" = "sha256-jSItKIwqqyJ8FlW5MbZb5m/Zbf9390VTrLRJ5z1lYlo=";
+      "aarch64-linux" = "sha256-rWXnYUwfFGijBJ9vcB9s/GPLswZjfn518zHs440N2uA=";
       "x86_64-linux" = "sha256-KsSc2Mk6fDgRn3/Ri8rkvGxixK5uoUO1vnrlqwsohmk=";
     }.${stdenvNoCC.system};
     outputHashAlgo = "sha256";
