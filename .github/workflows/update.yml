@@ -220,14 +220,13 @@ jobs:
 
       - name: Refresh hashes (aarch64-darwin)
         run: |
-          nu scripts/update-package.nu --refresh-hashes --system aarch64-darwin
+          nu scripts/update-package.nu --refresh-hashes --system aarch64-darwin --write-hash-map hash-map-aarch64-darwin.json
 
-      - name: Upload hash-updated files
+      - name: Upload hash map
         uses: actions/upload-artifact@v4
         with:
-          name: hash-updates-aarch64-darwin
-          path: |
-            packages/
+          name: hash-map-aarch64-darwin
+          path: hash-map-aarch64-darwin.json
 
   hashes-aarch64-linux:
     needs: update-versions
@@ -255,14 +254,13 @@ jobs:
 
       - name: Refresh hashes (aarch64-linux)
         run: |
-          nu scripts/update-package.nu --refresh-hashes --system aarch64-linux
+          nu scripts/update-package.nu --refresh-hashes --system aarch64-linux --write-hash-map hash-map-aarch64-linux.json
 
-      - name: Upload hash-updated files
+      - name: Upload hash map
         uses: actions/upload-artifact@v4
         with:
-          name: hash-updates-aarch64-linux
-          path: |
-            packages/
+          name: hash-map-aarch64-linux
+          path: hash-map-aarch64-linux.json
 
   hashes-x86_64-linux:
     needs: update-versions
@@ -290,14 +288,13 @@ jobs:
 
       - name: Refresh hashes (x86_64-linux)
         run: |
-          nu scripts/update-package.nu --refresh-hashes --system x86_64-linux
+          nu scripts/update-package.nu --refresh-hashes --system x86_64-linux --write-hash-map hash-map-x86_64-linux.json
 
-      - name: Upload hash-updated files
+      - name: Upload hash map
         uses: actions/upload-artifact@v4
         with:
-          name: hash-updates-x86_64-linux
-          path: |
-            packages/
+          name: hash-map-x86_64-linux
+          path: hash-map-x86_64-linux.json
 
   commit:
     needs: [update-versions, hashes-aarch64-darwin, hashes-aarch64-linux, hashes-x86_64-linux]
@@ -321,33 +318,36 @@ jobs:
         with:
           name: updated-packages
 
-      - name: Download aarch64-darwin hash updates
+      - name: Download aarch64-darwin hash map
         uses: actions/download-artifact@v4
         with:
-          name: hash-updates-aarch64-darwin
-          path: hash-updates/aarch64-darwin
+          name: hash-map-aarch64-darwin
+          path: hash-maps
 
-      - name: Download aarch64-linux hash updates
+      - name: Download aarch64-linux hash map
         uses: actions/download-artifact@v4
         with:
-          name: hash-updates-aarch64-linux
-          path: hash-updates/aarch64-linux
+          name: hash-map-aarch64-linux
+          path: hash-maps
 
-      - name: Download x86_64-linux hash updates
+      - name: Download x86_64-linux hash map
         uses: actions/download-artifact@v4
         with:
-          name: hash-updates-x86_64-linux
-          path: hash-updates/x86_64-linux
+          name: hash-map-x86_64-linux
+          path: hash-maps
 
-      - name: Merge hash updates
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Install Nushell
         run: |
-          for root in hash-updates/aarch64-darwin hash-updates/aarch64-linux hash-updates/x86_64-linux; do
-            if [ -d "$root/packages" ]; then
-              cp -a "$root/packages"/. packages/
-            else
-              cp -a "$root"/. packages/
-            fi
-          done
+          nix profile install nixpkgs#nushell
+
+      - name: Apply hash maps
+        run: |
+          nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-aarch64-darwin.json
+          nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-aarch64-linux.json
+          nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-x86_64-linux.json
 
       - name: Verify no fake hashes remain
         run: |

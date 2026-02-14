@@ -109,9 +109,13 @@ def package_config [package: string] {
     }
 }
 
+def npmfod_packages [] {
+    [ "pi" "gondolin" ]
+}
+
 def refresh_npmfod_hashes [system: string]: nothing -> bool {
     let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    let packages = [ "pi" "gondolin" ]
+    let packages = (npmfod_packages)
 
     for package in $packages {
         let config = package_config $package
@@ -164,7 +168,51 @@ def refresh_npmfod_hashes [system: string]: nothing -> bool {
     true
 }
 
-def main [package?: string, --check-lockstep, --refresh-hashes, --system: string] {
+def build_npmfod_hash_map [system: string] {
+    mut out = {}
+
+    for package in (npmfod_packages) {
+        let config = package_config $package
+        let content = open $config.file
+        let line = (
+            $content
+            | lines
+            | where ($it | str contains $'"($system)" = "')
+            | first
+        )
+
+        if ($line | is-empty) {
+            continue
+        }
+
+        let hash = ($line | split row '"' | get 3)
+        $out = ($out | upsert $package { $system: $hash })
+    }
+
+    $out
+}
+
+def apply_npmfod_hash_map [hash_map_file: string]: nothing -> bool {
+    let hash_map = open $hash_map_file
+
+    for package in ($hash_map | columns) {
+        let config = package_config $package
+
+        for system in ($hash_map | get $package | columns) {
+            let hash = ($hash_map | get $package | get $system)
+            let content = open $config.file
+            let updated = (
+                $content
+                | str replace -r $'"($system)" = "sha256-[^"]*"' $'"($system)" = "($hash)"'
+            )
+            $updated | save -f $config.file
+        }
+    }
+
+    true
+}
+
+def main [package?: string, --check-lockstep, --refresh-hashes, --system: string, --write-hash-map: string, --apply-hash-map: string] {
     if $check_lockstep {
         if (check_gondolin_lockstep) {
             print "updated=false"
@@ -172,6 +220,16 @@ def main [package?: string, --check-lockstep, --refresh-hashes, --system: string
         }
 
         exit 1
+    }
+
+    if ($apply_hash_map | is-not-empty) {
+        if not (apply_npmfod_hash_map $apply_hash_map) {
+            print "updated=false"
+            exit 1
+        }
+
+        print "updated=true"
+        return
     }
 
     if $refresh_hashes {
@@ -186,6 +244,12 @@ def main [package?: string, --check-lockstep, --refresh-hashes, --system: string
             exit 1
         }
 
+        if ($write_hash_map | is-not-empty) {
+            let hash_map = (build_npmfod_hash_map $target_system)
+            $hash_map | to json | save -f $write_hash_map
+            print $"wrote_hash_map=($write_hash_map)"
+        }
+
         print "updated=true"
         print $"system=($target_system)"
         return
@@ -195,7 +259,8 @@ def main [package?: string, --check-lockstep, --refresh-hashes, --system: string
         print "Error: missing package argument"
         print "Usage: ./scripts/update-package.nu <package-name>"
         print "       ./scripts/update-package.nu --check-lockstep"
-        print "       ./scripts/update-package.nu --refresh-hashes [--system <system>]"
+        print "       ./scripts/update-package.nu --refresh-hashes [--system <system>] [--write-hash-map <file>]"
+        print "       ./scripts/update-package.nu --apply-hash-map <file>"
         exit 1
     }
 
