@@ -171,10 +171,12 @@ in
         done < ${toplevelClosure}/store-paths
 
         # Sanity-check critical guest helper binaries remain executable.
-        for b in sandboxd sandboxfs sandboxssh; do
-          [ -x "$root${pkgs.gondolin-guest-bins}/bin/$b" ] \
-            || (echo "missing executable bit on $b in staged rootfs" >&2; exit 1)
-        done
+        ${lib.optionalString (pkgs ? gondolin-guest-bins) ''
+          for b in sandboxd sandboxfs sandboxssh; do
+            [ -x "$root${pkgs.gondolin-guest-bins}/bin/$b" ] \
+              || (echo "missing executable bit on $b in staged rootfs" >&2; exit 1)
+          done
+        ''}
 
         ln -s ${config.system.build.toplevel} "$root/nix/var/nix/profiles/system-1-link"
         ln -s system-1-link "$root/nix/var/nix/profiles/system"
