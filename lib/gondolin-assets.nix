@@ -192,7 +192,9 @@ in
         img="$TMPDIR/rootfs.img"
         truncate -s "''${size_mb}M" "$img"
 
-        mkfs.ext4 -F -L ${lib.escapeShellArg rootfsLabel} -d "$root" "$img"
+        # Use a denser inode ratio so large Nix closures with many small files
+        # don't fail with inode exhaustion during population.
+        mkfs.ext4 -F -i 4096 -L ${lib.escapeShellArg rootfsLabel} -d "$root" "$img"
 
         mkdir -p "$out"
         cp "$img" "$out/rootfs.img"
