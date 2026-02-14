@@ -341,9 +341,15 @@ jobs:
 
       - name: Merge hash updates
         run: |
-          cp -a hash-updates/aarch64-darwin/packages/. packages/
-          cp -a hash-updates/aarch64-linux/packages/. packages/
-          cp -a hash-updates/x86_64-linux/packages/. packages/
+          for root in hash-updates/aarch64-darwin hash-updates/aarch64-linux hash-updates/x86_64-linux; do
+            pkg_dir=$(find "$root" -type d -name packages | head -n1 || true)
+            if [ -z "$pkg_dir" ]; then
+              echo "Error: could not find packages directory under $root"
+              find "$root" -maxdepth 3 -print || true
+              exit 1
+            fi
+            cp -a "$pkg_dir"/. packages/
+          done
 
       - name: Verify no fake hashes remain
         run: |
