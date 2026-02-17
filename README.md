@@ -10,11 +10,11 @@
 | Package | Binary | Version | Description |
 |---------|--------|---------|-------------|
 | `codex-cli` | `codex` | 0.101.0 | OpenAI Codex CLI tool |
-| `claude-code` | `claude` | 2.1.44 | Anthropic's official CLI for Claude |
+| `claude-code` | `claude` | 2.1.45 | Anthropic's official CLI for Claude |
 | `gemini-cli` | `gemini` | 0.28.2 | Google's Gemini AI CLI |
 | `crush` | `crush` | 0.22.1 | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.2.6 | Anomaly's AI coding agent |
-| `pi` | `pi` | 0.52.12 | pi.dev minimal terminal-based coding agent |
+| `pi` | `pi` | 0.53.0 | pi.dev minimal terminal-based coding agent |
 | `gondolin` | `gondolin` | 0.3.0 | Local Linux micro-VM sandbox for AI agents |
 | `default` | all | - | Combined package with all tools |
 
