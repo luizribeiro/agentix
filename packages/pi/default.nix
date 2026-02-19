@@ -7,12 +7,12 @@
 }:
 
 let
-  version = "0.53.0";
+  version = "0.53.1";
   pname = "pi";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@mariozechner/pi-coding-agent/-/pi-coding-agent-${version}.tgz";
-    hash = "sha256-isNl7f8bvKTgMr8AJMM0VT/xLiRc+AY3hmA08Ruj9wQ=";
+    hash = "sha256-xOKDgxtihtg1OxvIVsr2HL2Edea3yyZ7ajZybDT2UD4=";
   };
 
   node_modules = stdenvNoCC.mkDerivation {
@@ -56,9 +56,9 @@ let
     dontFixup = true;
 
     outputHash = {
-      "aarch64-darwin" = "sha256-+Iwzibd1I5PiGtp9FEz4/cWB3MJkcAmSmY/c5Y0h8Jw=";
-      "aarch64-linux" = "sha256-DXydu61TVeaiD7iSihXhE7PyEPWdgrkgYw4Iu1hS0EI=";
-      "x86_64-linux" = "sha256-Syv4fe4/Bk6DTT9R/EMQHiDedWpeea06Vn7hogfiBuw=";
+      "aarch64-darwin" = "sha256-1TP2W2GoQrnn+bu93ekB8JQ9Ne3e4GVOB4H+QqKlMTM=";
+      "aarch64-linux" = "sha256-VXC4eq/MeLzC5nk+tJ+XJKRhSd5EZsw6/qAU7Oe6WWQ=";
+      "x86_64-linux" = "sha256-dJHTsO95Dwa3XXwp9hC8P5gtH9MEci3UkUmlXjcedk4=";
     }.${stdenvNoCC.system};
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
