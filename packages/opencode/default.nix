@@ -14,7 +14,7 @@ let
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "opencode";
-  version = "1.2.11";
+  version = "1.2.12";
 
   src = fetchFromGitHub {
     owner = "anomalyco";
