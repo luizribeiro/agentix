@@ -18,49 +18,6 @@ def parse_version [file: string] {
     )
 }
 
-def check_gondolin_lockstep [] {
-    let gondolin_version = parse_version "packages/gondolin/default.nix"
-    let guest_bins_version = parse_version "packages/gondolin-guest-bins/default.nix"
-
-    if $gondolin_version != $guest_bins_version {
-        print $"Error: gondolin lockstep mismatch: packages/gondolin/default.nix=($gondolin_version), packages/gondolin-guest-bins/default.nix=($guest_bins_version)"
-        return false
-    }
-
-    print $"✓ gondolin lockstep OK version=($gondolin_version)"
-    true
-}
-
-def sync_gondolin_guest_bins [version: string, hash_override?: string]: nothing -> bool {
-    let package_file = "packages/gondolin-guest-bins/default.nix"
-
-    let sri_hash = if ($hash_override | is-not-empty) {
-        $hash_override
-    } else {
-        let tarball_url = $"https://github.com/earendil-works/gondolin/archive/refs/tags/v($version).tar.gz"
-        print $"Fetching hash for ($tarball_url)..."
-
-        let hash_output = (nix-prefetch-url --unpack $tarball_url | complete)
-        if $hash_output.exit_code != 0 {
-            print $"Error fetching hash: ($hash_output.stderr)"
-            return false
-        }
-
-        let nix_hash = $hash_output.stdout | str trim
-        (nix hash convert --hash-algo sha256 $nix_hash | complete | get stdout | str trim)
-    }
-
-    let content = open $package_file
-    let updated = (
-        $content
-        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
-        | str replace -r '(?s)(src = fetchFromGitHub \{.*?hash = )"sha256-[^"]*"' $'$1"($sri_hash)"'
-    )
-
-    $updated | save -f $package_file
-    print $"✓ Synchronized gondolin-guest-bins to version ($version)"
-    true
-}
 
 def package_config [package: string] {
     match $package {
@@ -96,21 +53,16 @@ def package_config [package: string] {
             file: "packages/pi/default.nix",
             type: "npmFod"
         },
-        "gondolin" => {
-            npm_name: "@earendil-works/gondolin",
-            file: "packages/gondolin/default.nix",
-            type: "npmFod"
-        },
         _ => {
             print $"Error: Unknown package '($package)'"
-            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi, gondolin"
+            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi"
             exit 1
         }
     }
 }
 
 def npmfod_packages [] {
-    [ "pi" "gondolin" ]
+    [ "pi" ]
 }
 
 def refresh_npmfod_hashes [system: string]: nothing -> bool {
@@ -212,12 +164,7 @@ def apply_npmfod_hash_map [hash_map_file: string]: nothing -> bool {
     true
 }
 
-def main [package?: string, --check-lockstep, --refresh-hashes, --system: string, --write-hash-map: string, --apply-hash-map: string] {
-    if $check_lockstep {
-        if (check_gondolin_lockstep) {
-            print "updated=false"
-            return
-        }
+def main [package?: string, --refresh-hashes, --system: string, --write-hash-map: string, --apply-hash-map: string] {
 
         exit 1
     }
@@ -258,7 +205,6 @@ def main [package?: string, --check-lockstep, --refresh-hashes, --system: string
     if ($package | is-empty) {
         print "Error: missing package argument"
         print "Usage: ./scripts/update-package.nu <package-name>"
-        print "       ./scripts/update-package.nu --check-lockstep"
         print "       ./scripts/update-package.nu --refresh-hashes [--system <system>] [--write-hash-map <file>]"
         print "       ./scripts/update-package.nu --apply-hash-map <file>"
         exit 1
@@ -293,20 +239,6 @@ def main [package?: string, --check-lockstep, --refresh-hashes, --system: string
     print $"Latest:  ($latest_version)"
 
     if $current_version == $latest_version {
-        if $package == "gondolin" {
-            if not (check_gondolin_lockstep) {
-                print "↻ Synchronizing gondolin-guest-bins with current gondolin version"
-                if not (sync_gondolin_guest_bins $current_version) {
-                    print "updated=false"
-                    return
-                }
-
-                print "updated=true"
-                print $"current=($current_version)"
-                print $"latest=($latest_version)"
-                return
-            }
-        }
 
         print $"✓ ($package) is up to date"
         print "updated=false"
@@ -335,13 +267,6 @@ def main [package?: string, --check-lockstep, --refresh-hashes, --system: string
         print $"⚠ Could not update ($package) - build requirements not met"
         print "updated=false"
         return
-    }
-
-    if $package == "gondolin" {
-        if not (sync_gondolin_guest_bins $latest_version) {
-            print "updated=false"
-            return
-        }
     }
 
     # Update README.md with new version
@@ -380,7 +305,7 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
     true
 }
 
-# Update an npm FOD package (pi, gondolin) - has fetchurl hash + per-platform outputHash for node_modules
+# Update an npm FOD package (pi) - has fetchurl hash + per-platform outputHash for node_modules
 def update_npmfod_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
     let system = (nix eval --impure --expr builtins.currentSystem --raw | complete | get stdout | str trim)
     print $"Detected system: ($system)"
@@ -745,7 +670,6 @@ def update_readme [package: string, version: string] {
         "crush" => '| `crush` | `crush` |',
         "opencode" => '| `opencode` | `opencode` |',
         "pi" => '| `pi` | `pi` |',
-        "gondolin" => '| `gondolin` | `gondolin` |',
         _ => {
             print $"Warning: Unknown package ($package) for README update"
             return

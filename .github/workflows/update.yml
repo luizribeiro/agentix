@@ -2,8 +2,8 @@ name: Auto-update packages
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Run hourly
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   update-versions:
@@ -22,116 +22,65 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Install Nushell
-        run: |
-          nix profile install nixpkgs#nushell
+        run: nix profile install nixpkgs#nushell
 
       - name: Update codex-cli
         id: update-codex
         run: |
           OUTPUT=$(nu scripts/update-package.nu codex-cli)
           echo "$OUTPUT"
-
-          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
-          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
-          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
-
-          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
       - name: Update claude-code
         id: update-claude
         run: |
           OUTPUT=$(nu scripts/update-package.nu claude-code)
           echo "$OUTPUT"
-
-          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
-          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
-          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
-
-          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
       - name: Update gemini-cli
         id: update-gemini
         run: |
           OUTPUT=$(nu scripts/update-package.nu gemini-cli)
           echo "$OUTPUT"
-
-          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
-          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
-          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
-
-          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
       - name: Update crush
         id: update-crush
         run: |
           OUTPUT=$(nu scripts/update-package.nu crush)
           echo "$OUTPUT"
-
-          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
-          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
-          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
-
-          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
       - name: Update opencode
         id: update-opencode
         run: |
           OUTPUT=$(nu scripts/update-package.nu opencode)
           echo "$OUTPUT"
-
-          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
-          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
-          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
-
-          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
       - name: Update pi
         id: update-pi
         run: |
           OUTPUT=$(nu scripts/update-package.nu pi)
           echo "$OUTPUT"
-
-          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
-          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
-          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
-
-          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-
-      - name: Update gondolin
-        id: update-gondolin
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu gondolin)
-          echo "$OUTPUT"
-
-          UPDATED=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)
-          CURRENT=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")
-          LATEST=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")
-
-          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-
-      - name: Verify gondolin lockstep
-        run: |
-          nu scripts/update-package.nu --check-lockstep
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
       - name: Test builds
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true' || steps.update-gondolin.outputs.updated == 'true'
-        run: |
-          echo "Testing package builds..."
-          nix flake check --print-build-logs
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true'
+        run: nix flake check --print-build-logs
 
       - name: Check if any updated
         id: check
@@ -141,8 +90,7 @@ jobs:
              [ "${{ steps.update-gemini.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-crush.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-opencode.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-pi.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-gondolin.outputs.updated }}" == "true" ]; then
+             [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
             echo "any-updated=true" >> $GITHUB_OUTPUT
           else
             echo "any-updated=false" >> $GITHUB_OUTPUT
@@ -156,30 +104,20 @@ jobs:
           if [ "${{ steps.update-codex.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n\n- codex-cli: ${{ steps.update-codex.outputs.current }} → ${{ steps.update-codex.outputs.latest }}"
           fi
-
           if [ "${{ steps.update-claude.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- claude-code: ${{ steps.update-claude.outputs.current }} → ${{ steps.update-claude.outputs.latest }}"
           fi
-
           if [ "${{ steps.update-gemini.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- gemini-cli: ${{ steps.update-gemini.outputs.current }} → ${{ steps.update-gemini.outputs.latest }}"
           fi
-
           if [ "${{ steps.update-crush.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- crush: ${{ steps.update-crush.outputs.current }} → ${{ steps.update-crush.outputs.latest }}"
           fi
-
           if [ "${{ steps.update-opencode.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- opencode: ${{ steps.update-opencode.outputs.current }} → ${{ steps.update-opencode.outputs.latest }}"
           fi
-
           if [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
-          fi
-
-          if [ "${{ steps.update-gondolin.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- gondolin: ${{ steps.update-gondolin.outputs.current }} → ${{ steps.update-gondolin.outputs.latest }}"
-            MSG="$MSG\n- gondolin-guest-bins: ${{ steps.update-gondolin.outputs.current }} → ${{ steps.update-gondolin.outputs.latest }}"
           fi
 
           echo -e "$MSG" > commit-message.txt
@@ -202,65 +140,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Download updated files
         uses: actions/download-artifact@v4
         with:
           name: updated-packages
-
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
-
       - name: Install Nushell
-        run: |
-          nix profile install nixpkgs#nushell
-
+        run: nix profile install nixpkgs#nushell
       - name: Refresh hashes (aarch64-darwin)
-        run: |
-          nu scripts/update-package.nu --refresh-hashes --system aarch64-darwin --write-hash-map hash-map-aarch64-darwin.json
-
+        run: nu scripts/update-package.nu --refresh-hashes --system aarch64-darwin --write-hash-map hash-map-aarch64-darwin.json
       - name: Upload hash map
         uses: actions/upload-artifact@v4
         with:
           name: hash-map-aarch64-darwin
           path: hash-map-aarch64-darwin.json
-
-  hashes-aarch64-linux:
-    needs: update-versions
-    if: needs.update-versions.outputs.any-updated == 'true'
-    runs-on: ubuntu-24.04-arm
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download updated files
-        uses: actions/download-artifact@v4
-        with:
-          name: updated-packages
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-
-      - name: Setup Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Install Nushell
-        run: |
-          nix profile install nixpkgs#nushell
-
-      - name: Refresh hashes (aarch64-linux)
-        run: |
-          nu scripts/update-package.nu --refresh-hashes --system aarch64-linux --write-hash-map hash-map-aarch64-linux.json
-
-      - name: Upload hash map
-        uses: actions/upload-artifact@v4
-        with:
-          name: hash-map-aarch64-linux
-          path: hash-map-aarch64-linux.json
 
   hashes-x86_64-linux:
     needs: update-versions
@@ -270,26 +166,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Download updated files
         uses: actions/download-artifact@v4
         with:
           name: updated-packages
-
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
-
       - name: Install Nushell
-        run: |
-          nix profile install nixpkgs#nushell
-
+        run: nix profile install nixpkgs#nushell
       - name: Refresh hashes (x86_64-linux)
-        run: |
-          nu scripts/update-package.nu --refresh-hashes --system x86_64-linux --write-hash-map hash-map-x86_64-linux.json
-
+        run: nu scripts/update-package.nu --refresh-hashes --system x86_64-linux --write-hash-map hash-map-x86_64-linux.json
       - name: Upload hash map
         uses: actions/upload-artifact@v4
         with:
@@ -297,13 +185,12 @@ jobs:
           path: hash-map-x86_64-linux.json
 
   commit:
-    needs: [update-versions, hashes-aarch64-darwin, hashes-aarch64-linux, hashes-x86_64-linux]
+    needs: [update-versions, hashes-aarch64-darwin, hashes-x86_64-linux]
     if: >-
       always() &&
       needs.update-versions.result == 'success' &&
       needs.update-versions.outputs.any-updated == 'true' &&
       needs.hashes-aarch64-darwin.result == 'success' &&
-      needs.hashes-aarch64-linux.result == 'success' &&
       needs.hashes-x86_64-linux.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -312,43 +199,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Download version updates
         uses: actions/download-artifact@v4
         with:
           name: updated-packages
-
       - name: Download aarch64-darwin hash map
         uses: actions/download-artifact@v4
         with:
           name: hash-map-aarch64-darwin
           path: hash-maps
-
-      - name: Download aarch64-linux hash map
-        uses: actions/download-artifact@v4
-        with:
-          name: hash-map-aarch64-linux
-          path: hash-maps
-
       - name: Download x86_64-linux hash map
         uses: actions/download-artifact@v4
         with:
           name: hash-map-x86_64-linux
           path: hash-maps
-
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-
       - name: Install Nushell
-        run: |
-          nix profile install nixpkgs#nushell
-
+        run: nix profile install nixpkgs#nushell
       - name: Apply hash maps
         run: |
           nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-aarch64-darwin.json
-          nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-aarch64-linux.json
           nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-x86_64-linux.json
-
       - name: Verify no fake hashes remain
         run: |
           FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -356,12 +228,10 @@ jobs:
             echo "Error: fake hash remains in packages"
             exit 1
           fi
-
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Commit and push changes
         run: |
           git add packages/ README.md
