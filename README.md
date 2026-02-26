@@ -2,8 +2,9 @@
 
 > Your AI agents, packaged with Nix.
 
-`agentix` is a single Nix flake that bundles multiple tools commonly used by AI agents
-(coding CLIs and a local VM sandbox), so you can install, run, and pin them from one place.
+`agentix` is a single Nix flake that bundles popular AI coding CLIs so you can install, run, and pin them from one place.
+
+Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.com/luizribeiro/gondolin-nix).
 
 ## Available packages
 
@@ -15,7 +16,6 @@
 | `crush` | `crush` | 0.22.1 | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.2.15 | Anomaly's AI coding agent |
 | `pi` | `pi` | 0.55.1 | pi.dev minimal terminal-based coding agent |
-| `gondolin` | `gondolin` | 0.5.0 | Local Linux micro-VM sandbox for AI agents |
 | `default` | all | - | Combined package with all tools |
 
 Package versions are continuously refreshed via the repository update workflow.
@@ -40,7 +40,7 @@ Run one app without installing:
 
 ```bash
 nix run github:luizribeiro/agentix#codex
-nix run github:luizribeiro/agentix#gondolin
+nix run github:luizribeiro/agentix#pi
 ```
 
 ## Use in another flake (overlay)
@@ -69,177 +69,11 @@ nix run github:luizribeiro/agentix#gondolin
           crush
           opencode
           pi
-          gondolin
         ];
       };
     };
 }
 ```
-
-## Gondolin guest helpers (module + flake lib)
-
-Agentix exports both:
-- `nixosModules.gondolin-guest`
-- flake `lib` helpers to make guest systems/assets easy to compose:
-  - `agentix.lib.defaultGuestArchForSystem`
-  - `agentix.lib.mkGondolinGuestSystem`
-  - `agentix.lib.mkGondolinAssets`
-  - `agentix.lib.mkGondolinWithAssets`
-
-### Minimal module usage
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    agentix.url = "github:luizribeiro/agentix";
-  };
-
-  outputs = { self, nixpkgs, agentix, ... }: {
-    nixosConfigurations.gondolin-guest = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        agentix.nixosModules.gondolin-guest
-        ({ ... }: {
-          virtualisation.gondolin.guest.enable = true;
-
-          fileSystems."/" = {
-            device = "/dev/disk/by-label/gondolin-root";
-            fsType = "ext4";
-          };
-
-          boot.loader.grub.devices = [ "/dev/vda" ];
-          system.stateVersion = "25.11";
-        })
-      ];
-    };
-  };
-}
-```
-
-Build assets from that `nixosConfiguration`:
-
-```bash
-nix build .#nixosConfigurations.gondolin-guest.config.system.build.gondolinAssets
-```
-
-Run Gondolin with those assets:
-
-```bash
-GONDOLIN_GUEST_DIR="$(readlink -f result)" nix run .#gondolin -- exec -- echo hello
-```
-
-### Recommended: helper-based usage in downstream flakes
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    agentix.url = "github:luizribeiro/agentix";
-  };
-
-  outputs = { self, nixpkgs, agentix, ... }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [ agentix.overlays.default ];
-      };
-
-      guest = agentix.lib.mkGondolinGuestSystem {
-        inherit system;
-        modules = [
-          ({ pkgs, ... }: {
-            environment.systemPackages = with pkgs; [
-              neovim
-              git
-              python3
-            ];
-          })
-        ];
-      };
-
-      assets = agentix.lib.mkGondolinAssets {
-        guestSystem = guest;
-      };
-
-      gondolinWithAssets = agentix.lib.mkGondolinWithAssets {
-        inherit pkgs assets;
-        name = "gondolin-project";
-      };
-    in
-    {
-      packages.${system}.gondolin-assets = assets;
-      packages.${system}.gondolin = gondolinWithAssets;
-    };
-}
-```
-
-Build assets:
-
-```bash
-nix build .#gondolin-assets
-```
-
-Run Gondolin without manually setting `GONDOLIN_GUEST_DIR`:
-
-```bash
-nix run .#gondolin -- exec -- echo hello
-```
-
-### Non-flake usage (`default.nix`)
-
-You can also import Agentix as plain Nix and use the same helpers:
-
-```nix
-let
-  src = fetchTarball "https://github.com/luizribeiro/agentix/archive/main.tar.gz";
-
-  agentix = import src { };
-
-  pkgs = import <nixpkgs> {
-    system = "x86_64-linux";
-    overlays = [ agentix.overlays.default ];
-  };
-
-  guest = agentix.lib.mkGondolinGuestSystem {
-    system = "x86_64-linux";
-    modules = [
-      ({ pkgs, ... }: {
-        environment.systemPackages = with pkgs; [
-          neovim
-          git
-          python3
-        ];
-      })
-    ];
-  };
-
-  assets = agentix.lib.mkGondolinAssets {
-    guestSystem = guest;
-  };
-
-  gondolin = agentix.lib.mkGondolinWithAssets {
-    inherit pkgs assets;
-    name = "gondolin-project";
-  };
-in
-{
-  inherit assets gondolin;
-}
-```
-
-Save that as `vm.nix`, then:
-
-```bash
-nix-build vm.nix -A assets
-$(nix-build vm.nix -A gondolin)/bin/gondolin-project exec -- echo hello
-```
-
-Notes:
-- `virtualisation.gondolin.guest.includeOpenSSH = true` supports `vm.enableSsh()`.
-- Do not enable `services.openssh`; Gondolin manages sshd lifecycle itself.
-- `sandboxingress` is not included yet.
 
 ## Development
 
@@ -263,13 +97,7 @@ nix flake check
 ./scripts/update-package.nu crush
 ./scripts/update-package.nu opencode
 ./scripts/update-package.nu pi
-./scripts/update-package.nu gondolin
-
-# verify gondolin + gondolin-guest-bins lockstep
-./scripts/update-package.nu --check-lockstep
 ```
-
-When updating `gondolin`, the script also synchronizes `packages/gondolin-guest-bins/default.nix`.
 
 ## Notes
 
