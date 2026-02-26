@@ -15,9 +15,7 @@ in
 
   overlays.default = agentixLib.overlay;
 
-  nixosModules = {
-    gondolin-guest = agentixLib.gondolinGuestModule;
-  };
+  nixosModules = { };
 
-  lib = agentixLib.gondolinHelpers;
+  lib = { };
 }
