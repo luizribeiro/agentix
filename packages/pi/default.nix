@@ -56,9 +56,9 @@ let
     dontFixup = true;
 
     outputHash = {
-      "aarch64-darwin" = "sha256-xKAPdmQ9+Ahj0s/2cVY94jEt7QjVcYStU2rhdte5Ps0=";
-      "aarch64-linux" = "sha256-8t26ISF0ez5lTXTbEaWxq6HYxUcMXECFhlcbd3qE8CI=";
-      "x86_64-linux" = "sha256-+n4n9eKWysI4r+Guj++f7NuPnIh35pPuiYtLaYzVYKw=";
+      "aarch64-darwin" = "sha256-idy5CdYUZdKqUbxJlrByoRvFFoLnj+3os+EPgItVwbw=";
+      "aarch64-linux" = "sha256-rX/3SbkqIHHXSCb8Iv04LTHrfbDTI/LNnyNEXaNYyFc=";
+      "x86_64-linux" = "sha256-zZSpIczT9gNY3jytWrjMFefkFcN86L0g3nhtI8wcYb0=";
     }.${stdenvNoCC.system};
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
