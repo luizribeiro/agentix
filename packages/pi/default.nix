@@ -56,7 +56,7 @@ let
     dontFixup = true;
 
     outputHash = {
-      "aarch64-darwin" = "sha256-X5mUlJ9rkZdy2UR1q9nF7BrNlSd9bK7JlaYOs3tVmtg=";
+      "aarch64-darwin" = "sha256-djI4nH91SQkNl56FcDN4B9JVfWEZWAjJ/r/wjAmueYA=";
       "aarch64-linux" = "sha256-Q6QU0TFLk8hdCdIqVeqGgYoYJZClhmJ8+/pLUrRqImQ=";
       "x86_64-linux" = "sha256-cryxDJbXnU3lRp3psWHBH1/NVU4G/i7pcBEGNeFlB3w=";
     }.${stdenvNoCC.system};
