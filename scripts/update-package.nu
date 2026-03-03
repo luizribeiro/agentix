@@ -51,7 +51,7 @@ def package_config [package: string] {
         "pi" => {
             npm_name: "@mariozechner/pi-coding-agent",
             file: "packages/pi/default.nix",
-            type: "npmFod"
+            type: "buildNpmPackage"
         },
         _ => {
             print $"Error: Unknown package '($package)'"
@@ -62,7 +62,7 @@ def package_config [package: string] {
 }
 
 def npmfod_packages [] {
-    [ "pi" ]
+    [ ]
 }
 
 def refresh_npmfod_hashes [system: string]: nothing -> bool {
@@ -165,7 +165,8 @@ def apply_npmfod_hash_map [hash_map_file: string]: nothing -> bool {
 }
 
 def main [package?: string, --refresh-hashes, --system: string, --write-hash-map: string, --apply-hash-map: string] {
-
+    if $refresh_hashes and ($apply_hash_map | is-not-empty) {
+        print "Error: --refresh-hashes and --apply-hash-map are mutually exclusive"
         exit 1
     }
 
@@ -256,7 +257,7 @@ def main [package?: string, --refresh-hashes, --system: string, --write-hash-map
     } else if $config.type == "npmFod" {
         update_npmfod_package $config $package $latest_version $original_content
     } else if $config.type == "buildNpmPackage" {
-        update_buildnpm_package $config $latest_version $original_content
+        update_buildnpm_package $config $package $latest_version $original_content
     } else if $config.type == "buildGoModule" {
         update_buildgo_package $config $latest_version $original_content
     } else {
@@ -373,11 +374,30 @@ def update_npmfod_package [config: record, package: string, version: string, ori
     true
 }
 
-# Update a buildNpmPackage (gemini-cli)
-def update_buildnpm_package [config: record, version: string, original_content: string]: nothing -> bool {
+# Update a buildNpmPackage (gemini-cli, pi)
+def update_buildnpm_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
+    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+    if $package == "pi" {
+        print "Regenerating packages/pi/package-lock.json..."
+        let lockfile_cmd = (
+            "set -euo pipefail; repo_root=$(pwd); tmp=$(mktemp -d); trap 'rm -rf \"$tmp\"' EXIT; "
+            + "curl -L --fail -o \"$tmp/pi.tgz\" https://registry.npmjs.org/@mariozechner/pi-coding-agent/-/pi-coding-agent-"
+            + $version
+            + ".tgz >/dev/null; tar -xzf \"$tmp/pi.tgz\" -C \"$tmp\"; cd \"$tmp/package\"; "
+            + "npm install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null; "
+            + "cp package-lock.json \"$repo_root/packages/pi/package-lock.json\""
+        )
+        let lockfile_result = (^bash -lc $lockfile_cmd | complete)
+        if $lockfile_result.exit_code != 0 {
+            print "Error: Could not regenerate packages/pi/package-lock.json"
+            print $lockfile_result.stderr
+            return false
+        }
+    }
+
     # Update version and set fake hashes
     let content = open $config.file
-    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
     let updated = (
         $content
@@ -390,7 +410,7 @@ def update_buildnpm_package [config: record, version: string, original_content: 
 
     # Build to get source hash
     print "Building to get source hash..."
-    let src_result = (nix build .#gemini-cli --no-link | complete)
+    let src_result = (nix build $".#($package)" --no-link | complete)
     let src_got_lines = (
         $src_result.stderr
         | lines
@@ -429,7 +449,7 @@ def update_buildnpm_package [config: record, version: string, original_content: 
 
     # Build to get npmDepsHash
     print "Building to get npmDepsHash..."
-    let npm_result = (nix build .#gemini-cli --no-link | complete)
+    let npm_result = (nix build $".#($package)" --no-link | complete)
     let npm_got_lines = (
         $npm_result.stderr
         | lines
