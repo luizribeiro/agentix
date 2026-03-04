@@ -37,6 +37,13 @@ buildNpmPackage (finalAttrs: {
     echo "export const GIT_COMMIT_INFO = { commitHash: '${finalAttrs.src.rev}' };" > packages/generated/git-commit.ts
   '';
 
+  preBuild = ''
+    # @google/gemini-cli imports @google/gemini-cli-devtools dynamically, but
+    # the devtools workspace publishes types from dist/. Build it first so the
+    # CLI TypeScript build can resolve the module.
+    npm run build --workspace @google/gemini-cli-devtools
+  '';
+
   postPatch = ''
     # Remove node-pty dependency from package.json
     ${jq}/bin/jq 'del(.optionalDependencies."node-pty")' package.json > package.json.tmp && mv package.json.tmp package.json
@@ -55,11 +62,13 @@ buildNpmPackage (finalAttrs: {
 
     cp -r node_modules $out/share/gemini-cli/
 
-    rm -f $out/share/gemini-cli/node_modules/@google/gemini-cli
-    rm -f $out/share/gemini-cli/node_modules/@google/gemini-cli-core
-    rm -f $out/share/gemini-cli/node_modules/@google/gemini-cli-a2a-server
-    rm -f $out/share/gemini-cli/node_modules/@google/gemini-cli-test-utils
-    rm -f $out/share/gemini-cli/node_modules/gemini-cli-vscode-ide-companion
+    rm -rf $out/share/gemini-cli/node_modules/@google/gemini-cli
+    rm -rf $out/share/gemini-cli/node_modules/@google/gemini-cli-core
+    rm -rf $out/share/gemini-cli/node_modules/@google/gemini-cli-a2a-server
+    rm -rf $out/share/gemini-cli/node_modules/@google/gemini-cli-devtools
+    rm -rf $out/share/gemini-cli/node_modules/@google/gemini-cli-sdk
+    rm -rf $out/share/gemini-cli/node_modules/@google/gemini-cli-test-utils
+    rm -rf $out/share/gemini-cli/node_modules/gemini-cli-vscode-ide-companion
     cp -r packages/cli $out/share/gemini-cli/node_modules/@google/gemini-cli
     cp -r packages/core $out/share/gemini-cli/node_modules/@google/gemini-cli-core
     cp -r packages/a2a-server $out/share/gemini-cli/node_modules/@google/gemini-cli-a2a-server
