@@ -10,7 +10,7 @@ Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.
 
 | Package | Binary | Version | Description |
 |---------|--------|---------|-------------|
-| `codex-cli` | `codex` | 0.115.0 | OpenAI Codex CLI tool |
+| `codex-cli` | `codex` | 0.116.0 | OpenAI Codex CLI tool |
 | `claude-code` | `claude` | 2.1.79 | Anthropic's official CLI for Claude |
 | `gemini-cli` | `gemini` | 0.34.0 | Google's Gemini AI CLI |
 | `crush` | `crush` | 0.22.1 | Charmbracelet's AI coding agent |
