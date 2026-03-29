@@ -15,7 +15,7 @@ Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.
 | `gemini-cli` | `gemini` | 0.35.3 | Google's Gemini AI CLI |
 | `crush` | `crush` | 0.22.1 | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.3.6 | Anomaly's AI coding agent |
-| `pi` | `pi` | 0.63.2 | pi.dev minimal terminal-based coding agent |
+| `pi` | `pi` | 0.64.0 | pi.dev minimal terminal-based coding agent |
 | `default` | all | - | Combined package with all tools |
 
 Package versions are continuously refreshed via the repository update workflow.
