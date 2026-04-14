@@ -3,21 +3,7 @@
 # Update a package to its latest npm version
 #
 # Usage: ./scripts/update-package.nu <package-name>
-#        ./scripts/update-package.nu --refresh-hashes [--system <system>]
 # Example: ./scripts/update-package.nu codex-cli
-
-def parse_version [file: string] {
-    (
-        open $file
-        | lines
-        | where $it =~ 'version = '
-        | first
-        | str replace 'version = "' ''
-        | str replace '";' ''
-        | str trim
-    )
-}
-
 
 def package_config [package: string] {
     match $package {
@@ -62,153 +48,10 @@ def package_config [package: string] {
     }
 }
 
-def npmfod_packages [] {
-    [ ]
-}
-
-def refresh_npmfod_hashes [system: string]: nothing -> bool {
-    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    let packages = (npmfod_packages)
-
-    for package in $packages {
-        let config = package_config $package
-        let content = open $config.file
-
-        if not ($content | str contains $'"($system)" = "') {
-            print $"Skipping ($package): no outputHash entry for ($system)"
-            continue
-        }
-
-        let updated = (
-            $content
-            | str replace -r $'"($system)" = "sha256-[^"]*"' $'"($system)" = "($fake_hash)"'
-        )
-        $updated | save -f $config.file
-
-        print $"Building ($package) to compute outputHash for ($system)..."
-        let build_result = (nix build $".#($package)" --system $system --no-link | complete)
-        let got_lines = (
-            $build_result.stderr
-            | lines
-            | where $it =~ "got:"
-        )
-
-        if ($got_lines | is-empty) {
-            print $"Error: Could not extract outputHash for ($package) on ($system)"
-            print $build_result.stderr
-            return false
-        }
-
-        let fod_hash = (
-            $got_lines
-            | first
-            | str trim
-            | split row "got:"
-            | get 1
-            | str trim
-        )
-
-        let content2 = open $config.file
-        let updated2 = (
-            $content2
-            | str replace $'"($system)" = "($fake_hash)"' $'"($system)" = "($fod_hash)"'
-        )
-        $updated2 | save -f $config.file
-
-        print $"✓ ($package) outputHash for ($system): ($fod_hash)"
-    }
-
-    true
-}
-
-def build_npmfod_hash_map [system: string] {
-    mut out = {}
-
-    for package in (npmfod_packages) {
-        let config = package_config $package
-        let content = open $config.file
-        let line = (
-            $content
-            | lines
-            | where ($it | str contains $'"($system)" = "')
-            | first
-        )
-
-        if ($line | is-empty) {
-            continue
-        }
-
-        let hash = ($line | split row '"' | get 3)
-        $out = ($out | upsert $package { $system: $hash })
-    }
-
-    $out
-}
-
-def apply_npmfod_hash_map [hash_map_file: string]: nothing -> bool {
-    let hash_map = open $hash_map_file
-
-    for package in ($hash_map | columns) {
-        let config = package_config $package
-
-        for system in ($hash_map | get $package | columns) {
-            let hash = ($hash_map | get $package | get $system)
-            let content = open $config.file
-            let updated = (
-                $content
-                | str replace -r $'"($system)" = "sha256-[^"]*"' $'"($system)" = "($hash)"'
-            )
-            $updated | save -f $config.file
-        }
-    }
-
-    true
-}
-
-def main [package?: string, --refresh-hashes, --system: string, --write-hash-map: string, --apply-hash-map: string] {
-    if $refresh_hashes and ($apply_hash_map | is-not-empty) {
-        print "Error: --refresh-hashes and --apply-hash-map are mutually exclusive"
-        exit 1
-    }
-
-    if ($apply_hash_map | is-not-empty) {
-        if not (apply_npmfod_hash_map $apply_hash_map) {
-            print "updated=false"
-            exit 1
-        }
-
-        print "updated=true"
-        return
-    }
-
-    if $refresh_hashes {
-        let target_system = if ($system | is-empty) {
-            nix eval --impure --expr builtins.currentSystem --raw | complete | get stdout | str trim
-        } else {
-            $system
-        }
-
-        if not (refresh_npmfod_hashes $target_system) {
-            print "updated=false"
-            exit 1
-        }
-
-        if ($write_hash_map | is-not-empty) {
-            let hash_map = (build_npmfod_hash_map $target_system)
-            $hash_map | to json | save -f $write_hash_map
-            print $"wrote_hash_map=($write_hash_map)"
-        }
-
-        print "updated=true"
-        print $"system=($target_system)"
-        return
-    }
-
+def main [package?: string] {
     if ($package | is-empty) {
         print "Error: missing package argument"
         print "Usage: ./scripts/update-package.nu <package-name>"
-        print "       ./scripts/update-package.nu --refresh-hashes [--system <system>] [--write-hash-map <file>]"
-        print "       ./scripts/update-package.nu --apply-hash-map <file>"
         exit 1
     }
 
@@ -255,8 +98,6 @@ def main [package?: string, --refresh-hashes, --system: string, --write-hash-map
     # Update based on package type
     let update_result = if $config.type == "fod" {
         update_fod_package $config $latest_version
-    } else if $config.type == "npmFod" {
-        update_npmfod_package $config $package $latest_version $original_content
     } else if $config.type == "buildNpmPackage" {
         update_buildnpm_package $config $package $latest_version $original_content
     } else if $config.type == "buildGoModule" {
@@ -333,74 +174,6 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
         $updated2 | save -f $config.file
     }
 
-    true
-}
-
-# Update an npm FOD package (pi) - has fetchurl hash + per-platform outputHash for node_modules
-def update_npmfod_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
-    let system = (nix eval --impure --expr builtins.currentSystem --raw | complete | get stdout | str trim)
-    print $"Detected system: ($system)"
-
-    let tarball_url = $"https://registry.npmjs.org/($config.npm_name)/-/(($config.npm_name | split row '/' | last))-($version).tgz"
-    print $"Fetching hash for ($tarball_url)..."
-
-    let hash_output = (nix-prefetch-url $tarball_url | complete)
-    if $hash_output.exit_code != 0 {
-        print $"Error fetching hash: ($hash_output.stderr)"
-        return false
-    }
-
-    let nix_hash = $hash_output.stdout | str trim
-    let sri_hash = (nix hash convert --hash-algo sha256 $nix_hash | complete | get stdout | str trim)
-    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-
-    let content = open $config.file
-    let updated = (
-        $content
-        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
-        | str replace -r '(?s)(src = fetchurl \{.*?hash = )"sha256-[^"]*"' $'$1"($sri_hash)"'
-        | str replace -r $'"($system)" = "sha256-[^"]*"' $'"($system)" = "($fake_hash)"'
-    )
-
-    $updated | save -f $config.file
-
-    print $"Building to get node_modules outputHash for ($system)..."
-    let fod_result = (nix build $".#($package)" --no-link | complete)
-    let fod_got_lines = (
-        $fod_result.stderr
-        | lines
-        | where $it =~ "got:"
-    )
-
-    if ($fod_got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch. Build output:"
-        print $fod_result.stderr
-        $original_content | save -f $config.file
-        return false
-    }
-
-    let fod_hash = (
-        $fod_got_lines
-        | first
-        | str trim
-        | split row "got:"
-        | get 1
-        | str trim
-    )
-
-    if ($fod_hash | is-empty) {
-        print "Error: Could not extract outputHash"
-        $original_content | save -f $config.file
-        return false
-    }
-
-    let content2 = open $config.file
-    let updated2 = (
-        $content2
-        | str replace $'"($system)" = "($fake_hash)"' $'"($system)" = "($fod_hash)"'
-    )
-
-    $updated2 | save -f $config.file
     true
 }
 

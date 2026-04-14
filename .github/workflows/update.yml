@@ -132,66 +132,9 @@ jobs:
             README.md
             commit-message.txt
 
-  hashes-aarch64-darwin:
-    needs: update-versions
-    if: needs.update-versions.outputs.any-updated == 'true'
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Download updated files
-        uses: actions/download-artifact@v4
-        with:
-          name: updated-packages
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - name: Setup Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Install Nushell
-        run: nix profile install nixpkgs#nushell
-      - name: Refresh hashes (aarch64-darwin)
-        run: nu scripts/update-package.nu --refresh-hashes --system aarch64-darwin --write-hash-map hash-map-aarch64-darwin.json
-      - name: Upload hash map
-        uses: actions/upload-artifact@v4
-        with:
-          name: hash-map-aarch64-darwin
-          path: hash-map-aarch64-darwin.json
-
-  hashes-x86_64-linux:
-    needs: update-versions
-    if: needs.update-versions.outputs.any-updated == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Download updated files
-        uses: actions/download-artifact@v4
-        with:
-          name: updated-packages
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - name: Setup Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Install Nushell
-        run: nix profile install nixpkgs#nushell
-      - name: Refresh hashes (x86_64-linux)
-        run: nu scripts/update-package.nu --refresh-hashes --system x86_64-linux --write-hash-map hash-map-x86_64-linux.json
-      - name: Upload hash map
-        uses: actions/upload-artifact@v4
-        with:
-          name: hash-map-x86_64-linux
-          path: hash-map-x86_64-linux.json
-
   commit:
-    needs: [update-versions, hashes-aarch64-darwin, hashes-x86_64-linux]
-    if: >-
-      always() &&
-      needs.update-versions.result == 'success' &&
-      needs.update-versions.outputs.any-updated == 'true' &&
-      needs.hashes-aarch64-darwin.result == 'success' &&
-      needs.hashes-x86_64-linux.result == 'success'
+    needs: [update-versions]
+    if: needs.update-versions.outputs.any-updated == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -203,31 +146,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: updated-packages
-      - name: Download aarch64-darwin hash map
-        uses: actions/download-artifact@v4
-        with:
-          name: hash-map-aarch64-darwin
-          path: hash-maps
-      - name: Download x86_64-linux hash map
-        uses: actions/download-artifact@v4
-        with:
-          name: hash-map-x86_64-linux
-          path: hash-maps
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - name: Install Nushell
-        run: nix profile install nixpkgs#nushell
-      - name: Apply hash maps
-        run: |
-          nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-aarch64-darwin.json
-          nu scripts/update-package.nu --apply-hash-map hash-maps/hash-map-x86_64-linux.json
-      - name: Verify no fake hashes remain
-        run: |
-          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-          if grep -R -n "$FAKE" packages/; then
-            echo "Error: fake hash remains in packages"
-            exit 1
-          fi
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
