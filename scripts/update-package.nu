@@ -21,24 +21,29 @@ def package_config [package: string] {
         "gemini-cli" => {
             npm_name: "@google/gemini-cli",
             file: "packages/gemini-cli/default.nix",
-            type: "buildNpmPackage"
+            type: "multihash",
+            hash_steps: [["field", "label"]; ["hash", "source hash"], ["npmDepsHash", "npmDepsHash"]]
         },
         "crush" => {
             github_owner: "charmbracelet",
             github_repo: "crush",
             file: "packages/crush/default.nix",
-            type: "buildGoModule"
+            type: "multihash",
+            hash_steps: [["field", "label"]; ["hash", "source hash"], ["vendorHash", "vendorHash"]]
         },
         "opencode" => {
             github_owner: "anomalyco",
             github_repo: "opencode",
             file: "packages/opencode/default.nix",
-            type: "bunFod"
+            type: "multihash",
+            hash_steps: [["field", "label"]; ["hash", "source hash"], ["outputHash", "node_modules outputHash"]]
         },
         "pi" => {
             npm_name: "@mariozechner/pi-coding-agent",
             file: "packages/pi/default.nix",
-            type: "buildNpmPackage"
+            type: "multihash",
+            hash_steps: [["field", "label"]; ["hash", "source hash"], ["npmDepsHash", "npmDepsHash"]],
+            pre_update: "regen-pi-lockfile"
         },
         _ => {
             print $"Error: Unknown package '($package)'"
@@ -59,7 +64,7 @@ def main [package?: string] {
     let config = package_config $package
 
     # Fetch latest version
-    let latest_version = if $config.type == "buildGoModule" or $config.type == "bunFod" {
+    let latest_version = if ($config.github_owner? | is-not-empty) {
         print $"Fetching latest version from GitHub ($config.github_owner)/($config.github_repo)..."
         let api_url = $"https://api.github.com/repos/($config.github_owner)/($config.github_repo)/releases/latest"
         http get $api_url | get tag_name | str replace 'v' ''
@@ -98,12 +103,8 @@ def main [package?: string] {
     # Update based on package type
     let update_result = if $config.type == "fod" {
         update_fod_package $config $latest_version
-    } else if $config.type == "buildNpmPackage" {
-        update_buildnpm_package $config $package $latest_version $original_content
-    } else if $config.type == "buildGoModule" {
-        update_buildgo_package $config $latest_version $original_content
     } else {
-        update_bunfod_package $config $latest_version $original_content
+        update_multihash_package $config $package $latest_version $original_content
     }
 
     if not $update_result {
@@ -215,82 +216,51 @@ def resolve_hash_by_build [
     $real_hash
 }
 
-# Update a buildNpmPackage (gemini-cli, pi)
-def update_buildnpm_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
-    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-
-    if $package == "pi" {
-        print "Regenerating packages/pi/package-lock.json..."
-        let lockfile_cmd = (
-            "set -euo pipefail; repo_root=$(pwd); tmp=$(mktemp -d); trap 'rm -rf \"$tmp\"' EXIT; "
-            + "curl -L --fail -o \"$tmp/pi.tgz\" https://registry.npmjs.org/@mariozechner/pi-coding-agent/-/pi-coding-agent-"
-            + $version
-            + ".tgz >/dev/null; tar -xzf \"$tmp/pi.tgz\" -C \"$tmp\"; cd \"$tmp/package\"; "
-            + "npm install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null; "
-            + "cp package-lock.json \"$repo_root/packages/pi/package-lock.json\""
-        )
-        let lockfile_result = (^bash -lc $lockfile_cmd | complete)
-        if $lockfile_result.exit_code != 0 {
-            print "Error: Could not regenerate packages/pi/package-lock.json"
-            print $lockfile_result.stderr
-            return false
+def run_pre_update [hook: string, version: string]: nothing -> bool {
+    match $hook {
+        "regen-pi-lockfile" => {
+            print "Regenerating packages/pi/package-lock.json..."
+            let lockfile_cmd = (
+                "set -euo pipefail; repo_root=$(pwd); tmp=$(mktemp -d); trap 'rm -rf \"$tmp\"' EXIT; "
+                + "curl -L --fail -o \"$tmp/pi.tgz\" https://registry.npmjs.org/@mariozechner/pi-coding-agent/-/pi-coding-agent-"
+                + $version
+                + ".tgz >/dev/null; tar -xzf \"$tmp/pi.tgz\" -C \"$tmp\"; cd \"$tmp/package\"; "
+                + "npm install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null; "
+                + "cp package-lock.json \"$repo_root/packages/pi/package-lock.json\""
+            )
+            let result = (^bash -lc $lockfile_cmd | complete)
+            if $result.exit_code != 0 {
+                print $"Error in pre-update hook: ($result.stderr)"
+                return false
+            }
+            true
+        },
+        _ => {
+            print $"Error: Unknown pre-update hook '($hook)'"
+            false
         }
     }
-
-    (
-        open $config.file
-        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
-        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
-        | str replace -r 'npmDepsHash = "sha256-[^"]*"' $'npmDepsHash = "($fake_hash)"'
-    ) | save -f $config.file
-
-    for step in [["field", "label"]; ["hash", "source hash"], ["npmDepsHash", "npmDepsHash"]] {
-        let result = (resolve_hash_by_build $config.file $package $step.field $step.label)
-        if ($result | is-empty) {
-            $original_content | save -f $config.file
-            return false
-        }
-    }
-
-    true
 }
 
-# Update a buildGoModule package (crush)
-def update_buildgo_package [config: record, version: string, original_content: string]: nothing -> bool {
-    let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    let package = ($config.file | path dirname | path basename)
-
-    (
-        open $config.file
-        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
-        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
-        | str replace -r 'vendorHash = "sha256-[^"]*"' $'vendorHash = "($fake_hash)"'
-    ) | save -f $config.file
-
-    for step in [["field", "label"]; ["hash", "source hash"], ["vendorHash", "vendorHash"]] {
-        let result = (resolve_hash_by_build $config.file $package $step.field $step.label)
-        if ($result | is-empty) {
-            $original_content | save -f $config.file
+def update_multihash_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
+    if ($config.pre_update? | is-not-empty) {
+        if not (run_pre_update $config.pre_update $version) {
             return false
         }
     }
 
-    true
-}
-
-# Update a bun-based Fixed Output Derivation package (opencode)
-def update_bunfod_package [config: record, version: string, original_content: string]: nothing -> bool {
     let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    let package = ($config.file | path dirname | path basename)
 
-    (
+    mut content = (
         open $config.file
         | str replace -r 'version = "[^"]*"' $'version = "($version)"'
-        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
-        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fake_hash)"'
-    ) | save -f $config.file
+    )
+    for step in $config.hash_steps {
+        $content = ($content | str replace -r $'($step.field) = "sha256-[^"]*"' $'($step.field) = "($fake_hash)"')
+    }
+    $content | save -f $config.file
 
-    for step in [["field", "label"]; ["hash", "source hash"], ["outputHash", "node_modules outputHash"]] {
+    for step in $config.hash_steps {
         let result = (resolve_hash_by_build $config.file $package $step.field $step.label)
         if ($result | is-empty) {
             $original_content | save -f $config.file
