@@ -177,6 +177,44 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
     true
 }
 
+def resolve_hash_by_build [
+    file: string,
+    package: string,
+    field_name: string,
+    label: string
+]: nothing -> string {
+    print $"Building to get ($label)..."
+    let build_result = (nix build $".#($package)" --no-link | complete)
+    let got_lines = (
+        $build_result.stderr | lines | where $it =~ "got:"
+    )
+
+    if ($got_lines | is-empty) {
+        print $"Error: Build failed without hash mismatch for ($label). Build output:"
+        print $build_result.stderr
+        return ""
+    }
+
+    let real_hash = (
+        $got_lines | first | str trim | split row "got:" | get 1 | str trim
+    )
+
+    if ($real_hash | is-empty) {
+        print $"Error: Could not extract ($label)"
+        return ""
+    }
+
+    let content = open $file
+    let updated = (
+        $content
+        | str replace -r $'($field_name) = "sha256-[^"]*"' $'($field_name) = "($real_hash)"'
+    )
+    $updated | save -f $file
+
+    print $"✓ ($label): ($real_hash)"
+    $real_hash
+}
+
 # Update a buildNpmPackage (gemini-cli, pi)
 def update_buildnpm_package [config: record, package: string, version: string, original_content: string]: nothing -> bool {
     let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -199,285 +237,67 @@ def update_buildnpm_package [config: record, package: string, version: string, o
         }
     }
 
-    # Update version and set fake hashes
-    let content = open $config.file
-
-    let updated = (
-        $content
+    (
+        open $config.file
         | str replace -r 'version = "[^"]*"' $'version = "($version)"'
         | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
         | str replace -r 'npmDepsHash = "sha256-[^"]*"' $'npmDepsHash = "($fake_hash)"'
-    )
+    ) | save -f $config.file
 
-    $updated | save -f $config.file
-
-    # Build to get source hash
-    print "Building to get source hash..."
-    let src_result = (nix build $".#($package)" --no-link | complete)
-    let src_got_lines = (
-        $src_result.stderr
-        | lines
-        | where $it =~ "got:"
-    )
-
-    if ($src_got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch. Build output:"
-        print $src_result.stderr
-        $original_content | save -f $config.file
-        return false
+    for step in [["field", "label"]; ["hash", "source hash"], ["npmDepsHash", "npmDepsHash"]] {
+        let result = (resolve_hash_by_build $config.file $package $step.field $step.label)
+        if ($result | is-empty) {
+            $original_content | save -f $config.file
+            return false
+        }
     }
 
-    let src_hash = (
-        $src_got_lines
-        | first
-        | str trim
-        | split row "got:"
-        | get 1
-        | str trim
-    )
-
-    if ($src_hash | is-empty) {
-        print "Error: Could not extract source hash"
-        $original_content | save -f $config.file
-        return false
-    }
-
-    # Update source hash
-    let content2 = open $config.file
-    let updated2 = (
-        $content2
-        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($src_hash)"'
-    )
-    $updated2 | save -f $config.file
-
-    # Build to get npmDepsHash
-    print "Building to get npmDepsHash..."
-    let npm_result = (nix build $".#($package)" --no-link | complete)
-    let npm_got_lines = (
-        $npm_result.stderr
-        | lines
-        | where $it =~ "got:"
-    )
-
-    if ($npm_got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch. Build output:"
-        print $npm_result.stderr
-        $original_content | save -f $config.file
-        return false
-    }
-
-    let npm_hash = (
-        $npm_got_lines
-        | first
-        | str trim
-        | split row "got:"
-        | get 1
-        | str trim
-    )
-
-    if ($npm_hash | is-empty) {
-        print "Error: Could not extract npmDepsHash"
-        $original_content | save -f $config.file
-        return false
-    }
-
-    # Update npmDepsHash
-    let content3 = open $config.file
-    let updated3 = (
-        $content3
-        | str replace -r 'npmDepsHash = "sha256-[^"]*"' $'npmDepsHash = "($npm_hash)"'
-    )
-    $updated3 | save -f $config.file
     true
 }
 
 # Update a buildGoModule package (crush)
 def update_buildgo_package [config: record, version: string, original_content: string]: nothing -> bool {
-    # Update version and set fake hashes
-    let content = open $config.file
     let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    let package = ($config.file | path dirname | path basename)
 
-    let updated = (
-        $content
+    (
+        open $config.file
         | str replace -r 'version = "[^"]*"' $'version = "($version)"'
         | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
         | str replace -r 'vendorHash = "sha256-[^"]*"' $'vendorHash = "($fake_hash)"'
-    )
+    ) | save -f $config.file
 
-    $updated | save -f $config.file
-
-    # Build to get source hash
-    print "Building to get source hash..."
-    let src_result = (nix build .#crush --no-link | complete)
-    let src_got_lines = (
-        $src_result.stderr
-        | lines
-        | where $it =~ "got:"
-    )
-
-    if ($src_got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch. Build output:"
-        print $src_result.stderr
-        $original_content | save -f $config.file
-        return false
+    for step in [["field", "label"]; ["hash", "source hash"], ["vendorHash", "vendorHash"]] {
+        let result = (resolve_hash_by_build $config.file $package $step.field $step.label)
+        if ($result | is-empty) {
+            $original_content | save -f $config.file
+            return false
+        }
     }
 
-    let src_hash = (
-        $src_got_lines
-        | first
-        | str trim
-        | split row "got:"
-        | get 1
-        | str trim
-    )
-
-    if ($src_hash | is-empty) {
-        print "Error: Could not extract source hash"
-        $original_content | save -f $config.file
-        return false
-    }
-
-    # Update source hash
-    let content2 = open $config.file
-    let updated2 = (
-        $content2
-        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($src_hash)"'
-    )
-    $updated2 | save -f $config.file
-
-    # Build to get vendorHash
-    print "Building to get vendorHash..."
-    let vendor_result = (nix build .#crush --no-link | complete)
-    let vendor_got_lines = (
-        $vendor_result.stderr
-        | lines
-        | where $it =~ "got:"
-    )
-
-    if ($vendor_got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch. Build output:"
-        print $vendor_result.stderr
-        $original_content | save -f $config.file
-        return false
-    }
-
-    let vendor_hash = (
-        $vendor_got_lines
-        | first
-        | str trim
-        | split row "got:"
-        | get 1
-        | str trim
-    )
-
-    if ($vendor_hash | is-empty) {
-        print "Error: Could not extract vendorHash"
-        $original_content | save -f $config.file
-        return false
-    }
-
-    # Update vendorHash
-    let content3 = open $config.file
-    let updated3 = (
-        $content3
-        | str replace -r 'vendorHash = "sha256-[^"]*"' $'vendorHash = "($vendor_hash)"'
-    )
-    $updated3 | save -f $config.file
     true
 }
 
 # Update a bun-based Fixed Output Derivation package (opencode)
 def update_bunfod_package [config: record, version: string, original_content: string]: nothing -> bool {
-    # Update version and set fake hashes
-    let content = open $config.file
     let fake_hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    let package = ($config.file | path dirname | path basename)
 
-    let updated = (
-        $content
+    (
+        open $config.file
         | str replace -r 'version = "[^"]*"' $'version = "($version)"'
-        | str replace -r '(src = fetchFromGitHub \{[^}]*hash = )"sha256-[^"]*"' $'$1"($fake_hash)"'
+        | str replace -r 'hash = "sha256-[^"]*"' $'hash = "($fake_hash)"'
         | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fake_hash)"'
-    )
+    ) | save -f $config.file
 
-    $updated | save -f $config.file
-
-    # Build to get source hash
-    print "Building to get source hash..."
-    let src_result = (nix build .#opencode --no-link | complete)
-    let src_got_lines = (
-        $src_result.stderr
-        | lines
-        | where $it =~ "got:"
-    )
-
-    if ($src_got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch. Build output:"
-        print $src_result.stderr
-        $original_content | save -f $config.file
-        return false
+    for step in [["field", "label"]; ["hash", "source hash"], ["outputHash", "node_modules outputHash"]] {
+        let result = (resolve_hash_by_build $config.file $package $step.field $step.label)
+        if ($result | is-empty) {
+            $original_content | save -f $config.file
+            return false
+        }
     }
 
-    let src_hash = (
-        $src_got_lines
-        | first
-        | str trim
-        | split row "got:"
-        | get 1
-        | str trim
-    )
-
-    if ($src_hash | is-empty) {
-        print "Error: Could not extract source hash"
-        $original_content | save -f $config.file
-        return false
-    }
-
-    # Update source hash
-    let content2 = open $config.file
-    let updated2 = (
-        $content2
-        | str replace -r '(src = fetchFromGitHub \{[^}]*hash = )"sha256-[^"]*"' $'$1"($src_hash)"'
-    )
-    $updated2 | save -f $config.file
-
-    # Build to get outputHash (node_modules FOD)
-    print "Building to get node_modules outputHash..."
-    let fod_result = (nix build .#opencode --no-link | complete)
-    let fod_got_lines = (
-        $fod_result.stderr
-        | lines
-        | where $it =~ "got:"
-    )
-
-    if ($fod_got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch. Build output:"
-        print $fod_result.stderr
-        $original_content | save -f $config.file
-        return false
-    }
-
-    let fod_hash = (
-        $fod_got_lines
-        | first
-        | str trim
-        | split row "got:"
-        | get 1
-        | str trim
-    )
-
-    if ($fod_hash | is-empty) {
-        print "Error: Could not extract outputHash"
-        $original_content | save -f $config.file
-        return false
-    }
-
-    # Update outputHash
-    let content3 = open $config.file
-    let updated3 = (
-        $content3
-        | str replace -r 'outputHash = "sha256-[^"]*"' $'outputHash = "($fod_hash)"'
-    )
-    $updated3 | save -f $config.file
     true
 }
 
