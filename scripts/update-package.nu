@@ -24,7 +24,8 @@ def package_config [package: string] {
         "codex-cli" => {
             npm_name: "@openai/codex",
             file: "packages/codex-cli/default.nix",
-            type: "fod"
+            type: "fod",
+            platform_suffixes: ["darwin-arm64", "linux-x64", "linux-arm64"]
         },
         "claude-code" => {
             npm_name: "@anthropic-ai/claude-code",
@@ -282,7 +283,8 @@ def main [package?: string, --refresh-hashes, --system: string, --write-hash-map
 # Update a Fixed Output Derivation package (codex-cli, claude-code)
 def update_fod_package [config: record, version: string]: nothing -> bool {
     # Fetch tarball hash
-    let tarball_url = $"https://registry.npmjs.org/($config.npm_name)/-/(($config.npm_name | split row '/' | last))-($version).tgz"
+    let pkg_name = ($config.npm_name | split row '/' | last)
+    let tarball_url = $"https://registry.npmjs.org/($config.npm_name)/-/($pkg_name)-($version).tgz"
     print $"Fetching hash for ($tarball_url)..."
 
     let hash_output = (nix-prefetch-url $tarball_url | complete)
@@ -294,7 +296,7 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
     let nix_hash = $hash_output.stdout | str trim
     let sri_hash = (nix hash convert --hash-algo sha256 $nix_hash | complete | get stdout | str trim)
 
-    # Update version
+    # Update version and main hash
     let content = open $config.file
     let updated = (
         $content
@@ -303,6 +305,34 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
     )
 
     $updated | save -f $config.file
+
+    # Update platform-specific hashes if present (e.g. codex-cli)
+    let platform_suffixes = if ($config.platform_suffixes? | is-not-empty) {
+        $config.platform_suffixes
+    } else {
+        []
+    }
+
+    for suffix in $platform_suffixes {
+        let platform_url = $"https://registry.npmjs.org/($config.npm_name)/-/($pkg_name)-($version)-($suffix).tgz"
+        print $"Fetching platform hash for ($suffix)..."
+
+        let platform_hash_output = (nix-prefetch-url $platform_url | complete)
+        if $platform_hash_output.exit_code != 0 {
+            print $"Error fetching platform hash for ($suffix): ($platform_hash_output.stderr)"
+            return false
+        }
+
+        let platform_nix_hash = $platform_hash_output.stdout | str trim
+
+        let content2 = open $config.file
+        let updated2 = (
+            $content2
+            | str replace -r $'(?s)(suffix = "($suffix)";\s*hash = ")sha256:[^"]*"' $'$1sha256:($platform_nix_hash)"'
+        )
+        $updated2 | save -f $config.file
+    }
+
     true
 }
 

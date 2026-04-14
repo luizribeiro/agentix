@@ -8,6 +8,28 @@
 let
   version = "0.120.0";
   pname = "codex-cli";
+
+  platformInfo = {
+    "aarch64-darwin" = {
+      suffix = "darwin-arm64";
+      hash = "sha256:1yyibpwh038r11y0cm2hirp3n9f4w5jv3p7svrc146w1akm6vs9f";
+    };
+    "x86_64-linux" = {
+      suffix = "linux-x64";
+      hash = "sha256:1hlj6kb33hxc1vrgpfhjb83pabbrmx3mh5w2vallwqq7sdxhaqk6";
+    };
+    "aarch64-linux" = {
+      suffix = "linux-arm64";
+      hash = "sha256:1g6l7dy60hndwm97nrf2dp0r2m13c32v975xgq958sgp56fp9598";
+    };
+  };
+
+  info = platformInfo.${stdenv.hostPlatform.system};
+
+  platformPkg = fetchurl {
+    url = "https://registry.npmjs.org/@openai/codex/-/codex-${version}-${info.suffix}.tgz";
+    hash = info.hash;
+  };
 in
 stdenv.mkDerivation {
   inherit pname version;
@@ -28,6 +50,9 @@ stdenv.mkDerivation {
     mkdir -p $out/lib/node_modules/@openai/codex
     cp -r . $out/lib/node_modules/@openai/codex
 
+    mkdir -p $out/lib/node_modules/@openai/codex-${info.suffix}
+    tar -xzf ${platformPkg} -C $out/lib/node_modules/@openai/codex-${info.suffix} --strip-components=1
+
     mkdir -p $out/bin
     makeWrapper ${nodejs_22}/bin/node $out/bin/codex \
       --add-flags "$out/lib/node_modules/@openai/codex/bin/codex.js" \
@@ -41,7 +66,7 @@ stdenv.mkDerivation {
     homepage = "https://github.com/openai/openai-codex";
     license = licenses.unfree;
     maintainers = [ ];
-    platforms = platforms.all;
+    platforms = [ "aarch64-darwin" "x86_64-linux" "aarch64-linux" ];
     mainProgram = "codex";
   };
 }
