@@ -24,7 +24,14 @@
       ];
     in
     {
-      overlays.default = overlay;
+      # Expose pre-built packages so consumers aren't forced to rebuild
+      # with their own nixpkgs, which may lack features like
+      # npmDepsFetcherVersion = 2.
+      overlays.default = final: prev:
+        let system = prev.stdenv.hostPlatform.system;
+        in if self.packages ? ${system}
+          then builtins.removeAttrs self.packages.${system} [ "default" ]
+          else { };
 
       lib = { };
 
