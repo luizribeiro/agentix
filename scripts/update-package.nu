@@ -167,10 +167,14 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
 
         let platform_nix_hash = $platform_hash_output.stdout | str trim
 
+        # Build regex pattern to avoid quoting issues - use [^"] as character class
+        let regex_pattern = "(?s)(suffix = \"" + $suffix + "\";\\s*hash = \")sha256:[^\"]*\""
+        let replacement = "$1sha256:" + $platform_nix_hash + "\""
+
         let content2 = open $config.file
         let updated2 = (
             $content2
-            | str replace -r $'(?s)(suffix = "($suffix)";\s*hash = ")sha256:[^"]*"' $'$1sha256:($platform_nix_hash)"'
+            | str replace -r $regex_pattern $replacement
         )
         $updated2 | save -f $config.file
     }
