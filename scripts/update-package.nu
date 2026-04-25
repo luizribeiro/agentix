@@ -295,7 +295,7 @@ def update_readme [package: string, version: string] {
 
     print $"Updating README.md version for ($package)..."
 
-    let content = open $readme_path
+    let content = open --raw $readme_path
     let updated = (
         $content
         | lines
