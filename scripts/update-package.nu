@@ -175,7 +175,7 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
 
         # Build regex pattern to avoid quoting issues - use [^"] as character class
         let regex_pattern = "(?s)(suffix = \"" + $suffix + "\";\\s*hash = \")sha256:[^\"]*\""
-        let replacement = "$1sha256:" + $platform_nix_hash + "\""
+        let replacement = "${1}sha256:" + $platform_nix_hash + "\""
 
         let content2 = open $config.file
         let updated2 = (
