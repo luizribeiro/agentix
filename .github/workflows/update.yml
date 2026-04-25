@@ -8,6 +8,8 @@ on:
 jobs:
   update-versions:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
       any-updated: ${{ steps.check.outputs.any-updated }}
 

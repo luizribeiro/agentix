@@ -67,7 +67,13 @@ def main [package?: string] {
     let latest_version = if ($config.github_owner? | is-not-empty) {
         print $"Fetching latest version from GitHub ($config.github_owner)/($config.github_repo)..."
         let api_url = $"https://api.github.com/repos/($config.github_owner)/($config.github_repo)/releases/latest"
-        http get $api_url | get tag_name | str replace 'v' ''
+        let token = ($env.GITHUB_TOKEN? | default "")
+        let response = if ($token | is-empty) {
+            http get $api_url
+        } else {
+            http get --headers [Authorization $"Bearer ($token)"] $api_url
+        }
+        $response | get tag_name | str replace 'v' ''
     } else {
         print $"Fetching latest version for ($config.npm_name)..."
         let registry_url = $"https://registry.npmjs.org/($config.npm_name)"
