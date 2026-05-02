@@ -2,6 +2,8 @@
 , stdenv
 , fetchurl
 , makeWrapper
+, autoPatchelfHook
+, nodejs
 }:
 
 let
@@ -38,7 +40,8 @@ stdenv.mkDerivation {
     hash = "sha256-K3c9xNL2fPQfhNMycZnLudssKRwYd/HBg1aGBi/91KA=";
   };
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper autoPatchelfHook ];
+  buildInputs = [ nodejs ];
 
   dontBuild = true;
 
