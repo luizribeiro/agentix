@@ -16,7 +16,8 @@ def package_config [package: string] {
         "claude-code" => {
             npm_name: "@anthropic-ai/claude-code",
             file: "packages/claude-code/default.nix",
-            type: "fod"
+            type: "fod",
+            platform_suffixes: ["darwin-arm64", "linux-x64", "linux-arm64"]
         },
         "gemini-cli" => {
             npm_name: "@google/gemini-cli",
