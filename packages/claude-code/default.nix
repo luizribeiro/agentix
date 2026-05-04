@@ -44,6 +44,7 @@ stdenv.mkDerivation {
   buildInputs = [ nodejs ];
 
   dontBuild = true;
+  dontStrip = true;
 
   installPhase = ''
     runHook preInstall
