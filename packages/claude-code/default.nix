@@ -7,7 +7,7 @@
 }:
 
 let
-  version = "2.1.140";
+  version = "2.1.141";
   pname = "claude-code";
 
   platformInfo = {
@@ -37,7 +37,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
-    hash = "sha256-PkAobmEFbKrqcj4dipK8JPXRRn04kQ1wXKFGlE1nP3g=";
+    hash = "sha256-a35KoQBnG1hO3iMMrIfoBXOoZufFgSL76Q06LGuvfpw=";
   };
 
   nativeBuildInputs = [ makeWrapper ] ++ lib.optionals stdenv.hostPlatform.isLinux [ autoPatchelfHook ];
