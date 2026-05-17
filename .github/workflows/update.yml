@@ -80,8 +80,17 @@ jobs:
           echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
           echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
+      - name: Update roborev
+        id: update-roborev
+        run: |
+          OUTPUT=$(nu scripts/update-package.nu roborev)
+          echo "$OUTPUT"
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+
       - name: Test builds
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true'
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true' || steps.update-roborev.outputs.updated == 'true'
         run: nix flake check --print-build-logs
 
       - name: Check if any updated
@@ -92,7 +101,8 @@ jobs:
              [ "${{ steps.update-gemini.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-crush.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-opencode.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
+             [ "${{ steps.update-pi.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-roborev.outputs.updated }}" == "true" ]; then
             echo "any-updated=true" >> $GITHUB_OUTPUT
           else
             echo "any-updated=false" >> $GITHUB_OUTPUT
@@ -120,6 +130,9 @@ jobs:
           fi
           if [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
+          fi
+          if [ "${{ steps.update-roborev.outputs.updated }}" == "true" ]; then
+            MSG="$MSG\n- roborev: ${{ steps.update-roborev.outputs.current }} → ${{ steps.update-roborev.outputs.latest }}"
           fi
 
           echo -e "$MSG" > commit-message.txt

@@ -46,9 +46,16 @@ def package_config [package: string] {
             hash_steps: [["field", "label"]; ["hash", "source hash"], ["npmDepsHash", "npmDepsHash"]],
             pre_update: "regen-pi-lockfile"
         },
+        "roborev" => {
+            github_owner: "roborev-dev",
+            github_repo: "roborev",
+            file: "packages/roborev/default.nix",
+            type: "multihash",
+            hash_steps: [["field", "label"]; ["hash", "source hash"], ["vendorHash", "vendorHash"]]
+        },
         _ => {
             print $"Error: Unknown package '($package)'"
-            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi"
+            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi, roborev"
             exit 1
         }
     }
@@ -294,6 +301,7 @@ def update_readme [package: string, version: string] {
         "crush" => '| `crush` | `crush` |',
         "opencode" => '| `opencode` | `opencode` |',
         "pi" => '| `pi` | `pi` |',
+        "roborev" => '| `roborev` | `roborev` |',
         _ => {
             print $"Warning: Unknown package ($package) for README update"
             return
