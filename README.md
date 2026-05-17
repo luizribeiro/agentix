@@ -16,6 +16,7 @@ Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.
 | `crush` | `crush` | 0.66.0 | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.15.3 | Anomaly's AI coding agent |
 | `pi` | `pi` | 0.73.1 | pi.dev minimal terminal-based coding agent |
+| `roborev` | `roborev` | 0.55.0 | Continuous code review daemon for AI coding agents |
 | `default` | all | - | Combined package with all tools |
 
 Package versions are continuously refreshed via the repository update workflow.
@@ -41,6 +42,7 @@ Run one app without installing:
 ```bash
 nix run github:luizribeiro/agentix#codex
 nix run github:luizribeiro/agentix#pi
+nix run github:luizribeiro/agentix#roborev
 ```
 
 ## Use in another flake (overlay)
@@ -69,6 +71,7 @@ nix run github:luizribeiro/agentix#pi
           crush
           opencode
           pi
+          roborev
         ];
       };
     };
@@ -97,6 +100,7 @@ nix flake check
 ./scripts/update-package.nu crush
 ./scripts/update-package.nu opencode
 ./scripts/update-package.nu pi
+./scripts/update-package.nu roborev
 ```
 
 ## Notes
