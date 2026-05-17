@@ -17,7 +17,8 @@ def package_config [package: string] {
             npm_name: "@anthropic-ai/claude-code",
             file: "packages/claude-code/default.nix",
             type: "fod",
-            platform_suffixes: ["darwin-arm64", "linux-x64", "linux-arm64"]
+            platform_suffixes: ["darwin-arm64", "linux-x64", "linux-arm64"],
+            platform_layout: "subpackage"
         },
         "gemini-cli" => {
             npm_name: "@google/gemini-cli",
@@ -162,35 +163,45 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
 
     $updated | save -f $config.file
 
-    # Update platform-specific hashes if present (e.g. codex-cli)
     let platform_suffixes = if ($config.platform_suffixes? | is-not-empty) {
         $config.platform_suffixes
     } else {
         []
     }
+    let platform_layout = ($config.platform_layout? | default "suffix")
 
     for suffix in $platform_suffixes {
-        let platform_url = $"https://registry.npmjs.org/($config.npm_name)/-/($pkg_name)-($version)-($suffix).tgz"
-        print $"Fetching platform hash for ($suffix)..."
-
-        let platform_hash_output = (nix-prefetch-url $platform_url | complete)
-        if $platform_hash_output.exit_code != 0 {
-            print $"Error fetching platform hash for ($suffix): ($platform_hash_output.stderr)"
-            return false
+        let new_hash_value = if $platform_layout == "subpackage" {
+            let sub_pkg = $"($config.npm_name)-($suffix)"
+            print $"Fetching integrity for ($sub_pkg)@($version)..."
+            let meta = try {
+                http get $"https://registry.npmjs.org/($sub_pkg)/($version)"
+            } catch { |e|
+                print $"Error fetching ($sub_pkg)@($version): ($e.msg)"
+                return false
+            }
+            $meta | get dist.integrity
+        } else {
+            let platform_url = $"https://registry.npmjs.org/($config.npm_name)/-/($pkg_name)-($version)-($suffix).tgz"
+            print $"Fetching platform hash for ($suffix)..."
+            let platform_hash_output = (nix-prefetch-url $platform_url | complete)
+            if $platform_hash_output.exit_code != 0 {
+                print $"Error fetching platform hash for ($suffix): ($platform_hash_output.stderr)"
+                return false
+            }
+            "sha256:" + ($platform_hash_output.stdout | str trim)
         }
 
-        let platform_nix_hash = $platform_hash_output.stdout | str trim
+        let regex_pattern = "(?s)(suffix = \"" + $suffix + "\";\\s*hash = \")sha(256|512)[-:][^\"]*\""
+        let replacement = "${1}" + $new_hash_value + "\""
 
-        # Build regex pattern to avoid quoting issues - use [^"] as character class
-        let regex_pattern = "(?s)(suffix = \"" + $suffix + "\";\\s*hash = \")sha256:[^\"]*\""
-        let replacement = "${1}sha256:" + $platform_nix_hash + "\""
-
-        let content2 = open $config.file
-        let updated2 = (
-            $content2
-            | str replace -r $regex_pattern $replacement
-        )
-        $updated2 | save -f $config.file
+        let before = open $config.file
+        let after = ($before | str replace -r $regex_pattern $replacement)
+        if $before == $after {
+            print $"Error: platform hash for ($suffix) — regex did not match. File format may have changed."
+            return false
+        }
+        $after | save -f $config.file
     }
 
     true
