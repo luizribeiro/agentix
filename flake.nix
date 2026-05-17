@@ -56,6 +56,7 @@
           crush = pkgs.crush;
           opencode = pkgs.opencode;
           pi = pkgs.pi;
+          roborev = pkgs.roborev;
 
           default = pkgs.buildEnv {
             name = "agentix";
@@ -66,6 +67,7 @@
               pkgs.crush
               pkgs.opencode
               pkgs.pi
+              pkgs.roborev
             ];
             meta = {
               description = "agentix - Your AI agents, packaged with Nix";
@@ -105,6 +107,11 @@
             program = "${pkgs.pi}/bin/pi";
           };
 
+          roborev = {
+            type = "app";
+            program = "${pkgs.roborev}/bin/roborev";
+          };
+
           default = self.apps.${system}.claude;
         };
 
@@ -132,6 +139,7 @@
             echo "  ./scripts/update-package.nu crush"
             echo "  ./scripts/update-package.nu opencode"
             echo "  ./scripts/update-package.nu pi"
+            echo "  ./scripts/update-package.nu roborev"
             echo ""
             echo "Build packages:"
             echo "  nix build .#codex-cli"
@@ -140,7 +148,8 @@
             echo "  nix build .#crush"
             echo "  nix build .#opencode"
             echo "  nix build .#pi"
-            echo "  nix build .#default  # agentix with all six tools"
+            echo "  nix build .#roborev"
+            echo "  nix build .#default  # agentix with all seven tools"
           '';
         };
       });

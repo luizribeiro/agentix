@@ -21,6 +21,7 @@ let
       };
       opencode = final.callPackage ../packages/opencode { };
       pi = final.callPackage ../packages/pi { };
+      roborev = final.callPackage ../packages/roborev { };
     };
 in
 {
