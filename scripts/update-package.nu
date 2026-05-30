@@ -18,10 +18,13 @@ def discover-packages []: nothing -> list<string> {
         | sort
 }
 
+# Anchor on a 2-space indent so packages whose default.nix contains a
+# nested `version = ...` (e.g. crush's go_1_26_2 override inside a
+# `let`-binding) still return the package's own version.
 def read-current-version [file: string]: nothing -> string {
     open $file
         | lines
-        | where $it =~ 'version = '
+        | where $it =~ '^  version = "'
         | first
         | str replace 'version = "' ''
         | str replace '";' ''
