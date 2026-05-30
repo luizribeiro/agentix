@@ -1,5 +1,3 @@
-#!/usr/bin/env nu
-
 use ../../scripts/update-lib *
 
 # Antigravity ships closed-source prebuilt binaries through Google's own
@@ -16,14 +14,15 @@ const PLATFORMS = [
     [aarch64-linux, linux_arm64]
 ]
 const FILE = "packages/antigravity-cli/default.nix"
-const README_ANCHOR = '| `antigravity-cli` | `agy` |'
 
-def latest-version []: nothing -> string {
+export const README_ANCHOR = '| `antigravity-cli` | `agy` |'
+
+export def latest-version []: nothing -> string {
     let first = ($PLATFORMS | first)
     http get $"($MANIFEST_BASE)/($first.manifest).json" | get version
 }
 
-def update-files [version: string]: nothing -> bool {
+export def update-files [version: string]: nothing -> bool {
     mut entries = []
     for p in $PLATFORMS {
         let url = $"($MANIFEST_BASE)/($p.manifest).json"
@@ -73,27 +72,6 @@ def update-files [version: string]: nothing -> bool {
     true
 }
 
-def update-readme [version: string] {
+export def update-readme [version: string] {
     update-readme-row "antigravity-cli" $version $README_ANCHOR
-}
-
-def main [command: string, version?: string] {
-    match $command {
-        "latest" => { print (latest-version) }
-        "readme-anchor" => { print $README_ANCHOR }
-        "update-files" => {
-            if ($version | is-empty) { print "Error: version required"; exit 2 }
-            if not (update-files $version) { exit 1 }
-        }
-        "update-readme" => {
-            if ($version | is-empty) { print "Error: version required"; exit 2 }
-            update-readme $version
-        }
-        "update" => {
-            if ($version | is-empty) { print "Error: version required"; exit 2 }
-            if not (update-files $version) { exit 1 }
-            update-readme $version
-        }
-        _ => { print $"Unknown command: ($command)"; exit 2 }
-    }
 }

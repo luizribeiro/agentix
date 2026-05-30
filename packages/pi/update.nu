@@ -1,12 +1,6 @@
-#!/usr/bin/env nu
-
 use ../../scripts/update-lib *
 
-const README_ANCHOR = '| `pi` | `pi` |'
-
-def latest-version []: nothing -> string {
-    latest-from-npm "@mariozechner/pi-coding-agent"
-}
+export const README_ANCHOR = '| `pi` | `pi` |'
 
 # pi ships without a package-lock.json in its npm tarball, so we regenerate
 # one from the published tarball before letting update-multihash compute
@@ -29,7 +23,11 @@ def regenerate-lockfile [version: string]: nothing -> bool {
     true
 }
 
-def update-files [version: string]: nothing -> bool {
+export def latest-version []: nothing -> string {
+    latest-from-npm "@mariozechner/pi-coding-agent"
+}
+
+export def update-files [version: string]: nothing -> bool {
     if not (regenerate-lockfile $version) { return false }
     update-multihash {
         file: "packages/pi/default.nix"
@@ -41,27 +39,6 @@ def update-files [version: string]: nothing -> bool {
     } "pi" $version
 }
 
-def update-readme [version: string] {
+export def update-readme [version: string] {
     update-readme-row "pi" $version $README_ANCHOR
-}
-
-def main [command: string, version?: string] {
-    match $command {
-        "latest" => { print (latest-version) }
-        "readme-anchor" => { print $README_ANCHOR }
-        "update-files" => {
-            if ($version | is-empty) { print "Error: version required"; exit 2 }
-            if not (update-files $version) { exit 1 }
-        }
-        "update-readme" => {
-            if ($version | is-empty) { print "Error: version required"; exit 2 }
-            update-readme $version
-        }
-        "update" => {
-            if ($version | is-empty) { print "Error: version required"; exit 2 }
-            if not (update-files $version) { exit 1 }
-            update-readme $version
-        }
-        _ => { print $"Unknown command: ($command)"; exit 2 }
-    }
 }

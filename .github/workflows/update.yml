@@ -52,7 +52,7 @@ jobs:
       - name: Compute current vs latest
         id: versions
         run: |
-          LATEST=$(nu packages/${{ matrix.package }}/update.nu latest | tr -d '\n')
+          LATEST=$(nu -c "use packages/${{ matrix.package }}/update.nu *; latest-version" | tr -d '\n')
           CURRENT=$(grep -m1 -E '^  version = "' packages/${{ matrix.package }}/default.nix \
             | sed -E 's/.*"([^"]+)".*/\1/')
           echo "Current: $CURRENT"
@@ -75,7 +75,7 @@ jobs:
         id: rewrite
         continue-on-error: true
         run: |
-          nu packages/${{ matrix.package }}/update.nu update-files "${{ steps.versions.outputs.latest }}"
+          nu -c "use packages/${{ matrix.package }}/update.nu *; update-files '${{ steps.versions.outputs.latest }}'"
 
       - name: Write status JSON
         if: steps.versions.outputs.updated == 'true' && steps.rewrite.outcome == 'success'
@@ -144,7 +144,7 @@ jobs:
             # checkout's copy. Each artifact's files are disjoint.
             cp -r "$dir/packages/$pkg/." "packages/$pkg/"
             version=$(jq -r .latest "$status_file")
-            nu packages/$pkg/update.nu update-readme "$version"
+            nu -c "use packages/$pkg/update.nu *; update-readme '$version'"
             UPDATED_PKGS+=("$pkg")
           done
 
