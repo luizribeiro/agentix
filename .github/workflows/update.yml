@@ -53,6 +53,15 @@ jobs:
           echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
           echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
+      - name: Update antigravity-cli
+        id: update-antigravity
+        run: |
+          OUTPUT=$(nu scripts/update-package.nu antigravity-cli)
+          echo "$OUTPUT"
+          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
+
       - name: Update crush
         id: update-crush
         run: |
@@ -90,7 +99,7 @@ jobs:
           echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
 
       - name: Test builds
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true' || steps.update-roborev.outputs.updated == 'true'
+        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-antigravity.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true' || steps.update-roborev.outputs.updated == 'true'
         run: nix flake check --print-build-logs
 
       - name: Check if any updated
@@ -99,6 +108,7 @@ jobs:
           if [ "${{ steps.update-codex.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-claude.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-gemini.outputs.updated }}" == "true" ] || \
+             [ "${{ steps.update-antigravity.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-crush.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-opencode.outputs.updated }}" == "true" ] || \
              [ "${{ steps.update-pi.outputs.updated }}" == "true" ] || \
@@ -121,6 +131,9 @@ jobs:
           fi
           if [ "${{ steps.update-gemini.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- gemini-cli: ${{ steps.update-gemini.outputs.current }} → ${{ steps.update-gemini.outputs.latest }}"
+          fi
+          if [ "${{ steps.update-antigravity.outputs.updated }}" == "true" ]; then
+            MSG="$MSG\n- antigravity-cli: ${{ steps.update-antigravity.outputs.current }} → ${{ steps.update-antigravity.outputs.latest }}"
           fi
           if [ "${{ steps.update-crush.outputs.updated }}" == "true" ]; then
             MSG="$MSG\n- crush: ${{ steps.update-crush.outputs.current }} → ${{ steps.update-crush.outputs.latest }}"
