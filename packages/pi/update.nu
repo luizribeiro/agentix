@@ -1,0 +1,60 @@
+#!/usr/bin/env nu
+
+use ../../scripts/update-lib *
+
+def latest-version []: nothing -> string {
+    latest-from-npm "@mariozechner/pi-coding-agent"
+}
+
+# pi ships without a package-lock.json in its npm tarball, so we regenerate
+# one from the published tarball before letting update-multihash compute
+# npmDepsHash. Without this the build can't reproduce the node_modules tree.
+def regenerate-lockfile [version: string]: nothing -> bool {
+    print "Regenerating packages/pi/package-lock.json..."
+    let cmd = (
+        "set -euo pipefail; repo_root=$(pwd); tmp=$(mktemp -d); trap 'rm -rf \"$tmp\"' EXIT; "
+        + "curl -L --fail -o \"$tmp/pi.tgz\" https://registry.npmjs.org/@mariozechner/pi-coding-agent/-/pi-coding-agent-"
+        + $version
+        + ".tgz >/dev/null; tar -xzf \"$tmp/pi.tgz\" -C \"$tmp\"; cd \"$tmp/package\"; "
+        + "npm install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null; "
+        + "cp package-lock.json \"$repo_root/packages/pi/package-lock.json\""
+    )
+    let result = (^bash -lc $cmd | complete)
+    if $result.exit_code != 0 {
+        print $"Error regenerating lockfile: ($result.stderr)"
+        return false
+    }
+    true
+}
+
+def do-update [version: string]: nothing -> bool {
+    if not (regenerate-lockfile $version) { return false }
+    let ok = (update-multihash {
+        file: "packages/pi/default.nix"
+        hash_steps: [
+            [field, label];
+            [hash, "source hash"]
+            [npmDepsHash, "npmDepsHash"]
+        ]
+    } "pi" $version)
+    if not $ok { return false }
+    update-readme-row "pi" $version '| `pi` | `pi` |'
+    true
+}
+
+def main [command: string, version?: string] {
+    match $command {
+        "latest" => { print (latest-version) }
+        "update" => {
+            if ($version | is-empty) {
+                print "Error: update requires a version argument"
+                exit 2
+            }
+            if not (do-update $version) { exit 1 }
+        }
+        _ => {
+            print $"Unknown command: ($command)"
+            exit 2
+        }
+    }
+}
