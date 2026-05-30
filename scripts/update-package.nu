@@ -26,6 +26,17 @@ def package_config [package: string] {
             type: "multihash",
             hash_steps: [["field", "label"]; ["hash", "source hash"], ["npmDepsHash", "npmDepsHash"]]
         },
+        "antigravity-cli" => {
+            manifest_base: "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests",
+            file: "packages/antigravity-cli/default.nix",
+            type: "manifest",
+            platform_manifests: [
+                [system, manifest];
+                ["aarch64-darwin", "darwin_arm64"],
+                ["x86_64-linux", "linux_amd64"],
+                ["aarch64-linux", "linux_arm64"]
+            ]
+        },
         "crush" => {
             github_owner: "charmbracelet",
             github_repo: "crush",
@@ -56,7 +67,7 @@ def package_config [package: string] {
         },
         _ => {
             print $"Error: Unknown package '($package)'"
-            print "Valid packages: codex-cli, claude-code, gemini-cli, crush, opencode, pi, roborev"
+            print "Valid packages: codex-cli, claude-code, gemini-cli, antigravity-cli, crush, opencode, pi, roborev"
             exit 1
         }
     }
@@ -83,6 +94,11 @@ def main [package?: string] {
             http get --headers [Authorization $"Bearer ($token)"] $api_url
         }
         $response | get tag_name | str replace 'v' ''
+    } else if ($config.manifest_base? | is-not-empty) {
+        let first = ($config.platform_manifests | first)
+        let manifest_url = $"($config.manifest_base)/($first.manifest).json"
+        print $"Fetching latest version from ($manifest_url)..."
+        http get $manifest_url | get version
     } else {
         print $"Fetching latest version for ($config.npm_name)..."
         let registry_url = $"https://registry.npmjs.org/($config.npm_name)"
@@ -118,6 +134,8 @@ def main [package?: string] {
     # Update based on package type
     let update_result = if $config.type == "fod" {
         update_fod_package $config $latest_version
+    } else if $config.type == "manifest" {
+        update_manifest_package $config $latest_version
     } else {
         update_multihash_package $config $package $latest_version $original_content
     }
@@ -204,6 +222,68 @@ def update_fod_package [config: record, version: string]: nothing -> bool {
         $after | save -f $config.file
     }
 
+    true
+}
+
+# Update a package whose distribution is described by per-platform JSON manifests
+# (e.g. antigravity-cli). Each manifest returns { version, url, sha512 } and the
+# binary build ID (embedded in the URL) is updated once for all platforms.
+def update_manifest_package [config: record, version: string]: nothing -> bool {
+    mut entries = []
+    for entry in $config.platform_manifests {
+        let url = $"($config.manifest_base)/($entry.manifest).json"
+        print $"Fetching manifest for ($entry.system)..."
+        let manifest = try {
+            http get $url
+        } catch { |e|
+            print $"Error fetching manifest for ($entry.system): ($e.msg)"
+            return false
+        }
+        $entries = ($entries | append { system: $entry.system, manifest: $manifest })
+    }
+
+    let versions = ($entries | each {|e| $e.manifest.version} | uniq)
+    if ($versions | length) > 1 {
+        print $"Error: platform manifests disagree on version: ($versions)"
+        return false
+    }
+
+    # URL shape: .../antigravity-cli/<buildId>/<platform>/cli_*.tar.gz
+    let first_url = ($entries | first | get manifest.url)
+    let parts = ($first_url | split row '/')
+    let cli_idx = ($parts | enumerate | where item == "antigravity-cli" | get 0.index?)
+    if ($cli_idx | is-empty) {
+        print $"Error: could not locate 'antigravity-cli' segment in URL ($first_url)"
+        return false
+    }
+    let build_id = ($parts | get ($cli_idx + 1))
+
+    mut content = (
+        open $config.file
+        | str replace -r 'version = "[^"]*"' $'version = "($version)"'
+        | str replace -r 'buildId = "[^"]*"' $'buildId = "($build_id)"'
+    )
+
+    for entry in $entries {
+        let hex = $entry.manifest.sha512
+        let convert_result = (nix hash convert --hash-algo sha512 --to sri $hex | complete)
+        if $convert_result.exit_code != 0 {
+            print $"Error converting sha512 for ($entry.system): ($convert_result.stderr)"
+            return false
+        }
+        let sri = ($convert_result.stdout | str trim)
+
+        let regex_pattern = "(?s)(\"" + $entry.system + "\" = \\{[^}]*hash = \")sha(256|512)[-:][^\"]*\""
+        let replacement = "${1}" + $sri + "\""
+
+        if not ($content =~ $regex_pattern) {
+            print $"Error: platform hash for ($entry.system) — regex did not match. File format may have changed."
+            return false
+        }
+        $content = ($content | str replace -r $regex_pattern $replacement)
+    }
+
+    $content | save -f $config.file
     true
 }
 
@@ -309,6 +389,7 @@ def update_readme [package: string, version: string] {
         "codex-cli" => '| `codex-cli` | `codex` |',
         "claude-code" => '| `claude-code` | `claude` |',
         "gemini-cli" => '| `gemini-cli` | `gemini` |',
+        "antigravity-cli" => '| `antigravity-cli` | `agy` |',
         "crush" => '| `crush` | `crush` |',
         "opencode" => '| `opencode` | `opencode` |',
         "pi" => '| `pi` | `pi` |',

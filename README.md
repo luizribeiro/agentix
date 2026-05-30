@@ -99,6 +99,7 @@ nix flake check
 ./scripts/update-package.nu codex-cli
 ./scripts/update-package.nu claude-code
 ./scripts/update-package.nu gemini-cli
+./scripts/update-package.nu antigravity-cli
 ./scripts/update-package.nu crush
 ./scripts/update-package.nu opencode
 ./scripts/update-package.nu pi

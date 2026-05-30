@@ -143,6 +143,7 @@
             echo "  ./scripts/update-package.nu codex-cli"
             echo "  ./scripts/update-package.nu claude-code"
             echo "  ./scripts/update-package.nu gemini-cli"
+            echo "  ./scripts/update-package.nu antigravity-cli"
             echo "  ./scripts/update-package.nu crush"
             echo "  ./scripts/update-package.nu opencode"
             echo "  ./scripts/update-package.nu pi"
