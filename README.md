@@ -13,6 +13,7 @@ Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.
 | `codex-cli` | `codex` | 0.135.0 | OpenAI Codex CLI tool |
 | `claude-code` | `claude` | 2.1.158 | Anthropic's official CLI for Claude |
 | `gemini-cli` | `gemini` | 0.44.1 | Google's Gemini AI CLI |
+| `antigravity-cli` | `agy` | 1.0.3 | Google's Antigravity CLI (successor to Gemini CLI) |
 | `crush` | `crush` | 0.66.0 | Charmbracelet's AI coding agent |
 | `opencode` | `opencode` | 1.15.12 | Anomaly's AI coding agent |
 | `pi` | `pi` | 0.73.1 | pi.dev minimal terminal-based coding agent |
@@ -68,6 +69,7 @@ nix run github:luizribeiro/agentix#roborev
           codex-cli
           claude-code
           gemini-cli
+          antigravity-cli
           crush
           opencode
           pi
@@ -105,7 +107,7 @@ nix flake check
 
 ## Notes
 
-- `codex-cli` and `claude-code` are unfree packages (`config.allowUnfree = true`).
+- `codex-cli`, `claude-code`, and `antigravity-cli` are unfree packages (`config.allowUnfree = true`).
 - Automatic updates run in `.github/workflows/update.yml`.
 
 ## Contributing

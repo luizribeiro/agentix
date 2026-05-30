@@ -16,6 +16,7 @@ let
       codex-cli = final.callPackage ../packages/codex-cli { };
       claude-code = final.callPackage ../packages/claude-code { };
       gemini-cli = final.callPackage ../packages/gemini-cli { };
+      antigravity-cli = final.callPackage ../packages/antigravity-cli { };
       crush = final.callPackage ../packages/crush {
         buildGo125Module = prev.buildGo125Module.override { go = go_1_26_2; };
       };

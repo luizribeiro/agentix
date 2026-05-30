@@ -1,5 +1,5 @@
 {
-  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, crush, opencode, pi)";
+  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, antigravity-cli, crush, opencode, pi)";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -53,6 +53,7 @@
           codex-cli = pkgs.codex-cli;
           claude-code = pkgs.claude-code;
           gemini-cli = pkgs.gemini-cli;
+          antigravity-cli = pkgs.antigravity-cli;
           crush = pkgs.crush;
           opencode = pkgs.opencode;
           pi = pkgs.pi;
@@ -64,6 +65,7 @@
               pkgs.codex-cli
               pkgs.claude-code
               pkgs.gemini-cli
+              pkgs.antigravity-cli
               pkgs.crush
               pkgs.opencode
               pkgs.pi
@@ -90,6 +92,11 @@
           gemini = {
             type = "app";
             program = "${pkgs.gemini-cli}/bin/gemini";
+          };
+
+          agy = {
+            type = "app";
+            program = "${pkgs.antigravity-cli}/bin/agy";
           };
 
           crush = {
@@ -145,11 +152,12 @@
             echo "  nix build .#codex-cli"
             echo "  nix build .#claude-code"
             echo "  nix build .#gemini-cli"
+            echo "  nix build .#antigravity-cli"
             echo "  nix build .#crush"
             echo "  nix build .#opencode"
             echo "  nix build .#pi"
             echo "  nix build .#roborev"
-            echo "  nix build .#default  # agentix with all seven tools"
+            echo "  nix build .#default  # agentix with all eight tools"
           '';
         };
       });
