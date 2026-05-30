@@ -6,16 +6,39 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-versions:
+  # List every packages/<name>/update.nu so downstream jobs can fan out.
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          PKGS=$(ls -d packages/*/update.nu \
+            | xargs -n1 dirname \
+            | xargs -n1 basename \
+            | jq -R . \
+            | jq -sc .)
+          echo "packages=$PKGS" >> $GITHUB_OUTPUT
+          echo "Discovered: $PKGS"
+
+  # One job per package: check upstream, rewrite files if needed, upload
+  # the modified packages/<name>/ tree + a small status JSON. README is
+  # intentionally not touched here so parallel runners don't race over
+  # the same file — the aggregator handles READMEs in a single serial
+  # pass at the end.
+  update:
+    needs: discover
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    outputs:
-      any-updated: ${{ steps.check.outputs.any-updated }}
-
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover.outputs.packages) }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
@@ -26,160 +49,123 @@ jobs:
       - name: Install Nushell
         run: nix profile install nixpkgs#nushell
 
-      - name: Update codex-cli
-        id: update-codex
+      - name: Compute current vs latest
+        id: versions
         run: |
-          OUTPUT=$(nu scripts/update-package.nu codex-cli)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Update claude-code
-        id: update-claude
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu claude-code)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Update gemini-cli
-        id: update-gemini
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu gemini-cli)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Update antigravity-cli
-        id: update-antigravity
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu antigravity-cli)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Update crush
-        id: update-crush
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu crush)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Update opencode
-        id: update-opencode
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu opencode)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Update pi
-        id: update-pi
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu pi)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Update roborev
-        id: update-roborev
-        run: |
-          OUTPUT=$(nu scripts/update-package.nu roborev)
-          echo "$OUTPUT"
-          echo "updated=$(echo "$OUTPUT" | grep "updated=" | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "current=$(echo "$OUTPUT" | grep "current=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-          echo "latest=$(echo "$OUTPUT" | grep "latest=" | cut -d= -f2 || echo "")" >> $GITHUB_OUTPUT
-
-      - name: Test builds
-        if: steps.update-codex.outputs.updated == 'true' || steps.update-claude.outputs.updated == 'true' || steps.update-gemini.outputs.updated == 'true' || steps.update-antigravity.outputs.updated == 'true' || steps.update-crush.outputs.updated == 'true' || steps.update-opencode.outputs.updated == 'true' || steps.update-pi.outputs.updated == 'true' || steps.update-roborev.outputs.updated == 'true'
-        run: nix flake check --print-build-logs
-
-      - name: Check if any updated
-        id: check
-        run: |
-          if [ "${{ steps.update-codex.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-claude.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-gemini.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-antigravity.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-crush.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-opencode.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-pi.outputs.updated }}" == "true" ] || \
-             [ "${{ steps.update-roborev.outputs.updated }}" == "true" ]; then
-            echo "any-updated=true" >> $GITHUB_OUTPUT
+          LATEST=$(nu packages/${{ matrix.package }}/update.nu latest | tr -d '\n')
+          CURRENT=$(grep -m1 -E '^  version = "' packages/${{ matrix.package }}/default.nix \
+            | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "Current: $CURRENT"
+          echo "Latest:  $LATEST"
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          if [ "$CURRENT" = "$LATEST" ]; then
+            echo "updated=false" >> $GITHUB_OUTPUT
           else
-            echo "any-updated=false" >> $GITHUB_OUTPUT
+            echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Prepare commit message
-        if: steps.check.outputs.any-updated == 'true'
+      - name: Rewrite package files
+        if: steps.versions.outputs.updated == 'true'
         run: |
-          MSG="chore: update packages"
+          nu packages/${{ matrix.package }}/update.nu update-files "${{ steps.versions.outputs.latest }}"
 
-          if [ "${{ steps.update-codex.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n\n- codex-cli: ${{ steps.update-codex.outputs.current }} → ${{ steps.update-codex.outputs.latest }}"
-          fi
-          if [ "${{ steps.update-claude.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- claude-code: ${{ steps.update-claude.outputs.current }} → ${{ steps.update-claude.outputs.latest }}"
-          fi
-          if [ "${{ steps.update-gemini.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- gemini-cli: ${{ steps.update-gemini.outputs.current }} → ${{ steps.update-gemini.outputs.latest }}"
-          fi
-          if [ "${{ steps.update-antigravity.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- antigravity-cli: ${{ steps.update-antigravity.outputs.current }} → ${{ steps.update-antigravity.outputs.latest }}"
-          fi
-          if [ "${{ steps.update-crush.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- crush: ${{ steps.update-crush.outputs.current }} → ${{ steps.update-crush.outputs.latest }}"
-          fi
-          if [ "${{ steps.update-opencode.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- opencode: ${{ steps.update-opencode.outputs.current }} → ${{ steps.update-opencode.outputs.latest }}"
-          fi
-          if [ "${{ steps.update-pi.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- pi: ${{ steps.update-pi.outputs.current }} → ${{ steps.update-pi.outputs.latest }}"
-          fi
-          if [ "${{ steps.update-roborev.outputs.updated }}" == "true" ]; then
-            MSG="$MSG\n- roborev: ${{ steps.update-roborev.outputs.current }} → ${{ steps.update-roborev.outputs.latest }}"
-          fi
+      - name: Write status JSON
+        if: steps.versions.outputs.updated == 'true'
+        run: |
+          mkdir -p update-result
+          jq -n \
+            --arg pkg "${{ matrix.package }}" \
+            --arg current "${{ steps.versions.outputs.current }}" \
+            --arg latest "${{ steps.versions.outputs.latest }}" \
+            '{package: $pkg, current: $current, latest: $latest}' \
+            > update-result/${{ matrix.package }}.json
 
-          echo -e "$MSG" > commit-message.txt
-
-      - name: Upload updated files
-        if: steps.check.outputs.any-updated == 'true'
+      - name: Upload artifact
+        if: steps.versions.outputs.updated == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: updated-packages
+          name: update-${{ matrix.package }}
           path: |
-            packages/
-            README.md
-            commit-message.txt
+            packages/${{ matrix.package }}/
+            update-result/${{ matrix.package }}.json
 
-  commit:
-    needs: [update-versions]
-    if: needs.update-versions.outputs.any-updated == 'true'
+  # Merge all per-package updates: apply each artifact's modified
+  # packages/<name>/ tree onto a fresh checkout, run the per-package
+  # README rewrite, verify with flake check, then commit + push.
+  aggregate:
+    needs: [discover, update]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Download version updates
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Install Nushell
+        run: nix profile install nixpkgs#nushell
+
+      - name: Download all update artifacts
         uses: actions/download-artifact@v4
         with:
-          name: updated-packages
-      - name: Configure git
+          path: artifacts
+          pattern: update-*
+
+      - name: Apply file updates and refresh READMEs
+        id: apply
+        run: |
+          set -euo pipefail
+          UPDATED_PKGS=()
+          shopt -s nullglob
+          for dir in artifacts/update-*; do
+            pkg=$(basename "$dir" | sed 's/^update-//')
+            status_file="$dir/update-result/$pkg.json"
+            if [ ! -f "$status_file" ]; then
+              echo "No status file for $pkg — skipping"
+              continue
+            fi
+            # The matrix-modified packages/<pkg>/ tree replaces the
+            # checkout's copy. Each artifact's files are disjoint.
+            cp -r "$dir/packages/$pkg/." "packages/$pkg/"
+            version=$(jq -r .latest "$status_file")
+            nu packages/$pkg/update.nu update-readme "$version"
+            UPDATED_PKGS+=("$pkg")
+          done
+
+          if [ ${#UPDATED_PKGS[@]} -eq 0 ]; then
+            echo "any-updated=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "any-updated=true" >> $GITHUB_OUTPUT
+
+          {
+            echo "chore: update packages"
+            echo
+            for pkg in "${UPDATED_PKGS[@]}"; do
+              status_file="artifacts/update-$pkg/update-result/$pkg.json"
+              current=$(jq -r .current "$status_file")
+              latest=$(jq -r .latest "$status_file")
+              echo "- $pkg: $current → $latest"
+            done
+          } > commit-message.txt
+
+          echo "--- commit message ---"
+          cat commit-message.txt
+
+      - name: Flake check
+        if: steps.apply.outputs.any-updated == 'true'
+        run: nix flake check --print-build-logs
+
+      - name: Commit and push
+        if: steps.apply.outputs.any-updated == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      - name: Commit and push changes
-        run: |
           git add packages/ README.md
-          git commit -m "$(cat commit-message.txt)"
+          git commit -F commit-message.txt
           git push
