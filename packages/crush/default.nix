@@ -1,10 +1,24 @@
 { lib
 , buildGo125Module
 , fetchFromGitHub
+, fetchurl
+, go_1_26
 , installShellFiles
 }:
 
-buildGo125Module rec {
+let
+  # crush needs the unreleased Go 1.26.2 fix; pin it here so the overlay
+  # doesn't have to know about per-package toolchain overrides.
+  go_1_26_2 = go_1_26.overrideAttrs (old: rec {
+    version = "1.26.2";
+    src = fetchurl {
+      url = "https://go.dev/dl/go${version}.src.tar.gz";
+      hash = "sha256-LpHrtpR6lulDb7KzkmqIAu/mOm03Xf/sT4Kqnb1v1Ds=";
+    };
+  });
+  buildGo125Module' = buildGo125Module.override { go = go_1_26_2; };
+in
+buildGo125Module' rec {
   pname = "crush";
   version = "0.66.0";
 
