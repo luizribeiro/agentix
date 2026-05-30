@@ -2,17 +2,21 @@
 , nixosSystem
 }:
 let
+  # Auto-discover every subdirectory of packages/ that has a default.nix.
+  # Each package self-contains its dependencies; no per-package overrides
+  # live here.
+  packagesDir = ../packages;
+  packageNames = lib.attrNames (
+    lib.filterAttrs
+      (name: type: type == "directory"
+        && builtins.pathExists (packagesDir + "/${name}/default.nix"))
+      (builtins.readDir packagesDir)
+  );
+
   overlay = final: prev:
-    {
-      codex-cli = final.callPackage ../packages/codex-cli { };
-      claude-code = final.callPackage ../packages/claude-code { };
-      gemini-cli = final.callPackage ../packages/gemini-cli { };
-      antigravity-cli = final.callPackage ../packages/antigravity-cli { };
-      crush = final.callPackage ../packages/crush { };
-      opencode = final.callPackage ../packages/opencode { };
-      pi = final.callPackage ../packages/pi { };
-      roborev = final.callPackage ../packages/roborev { };
-    };
+    lib.genAttrs packageNames (name:
+      final.callPackage (packagesDir + "/${name}") { }
+    );
 in
 {
   inherit overlay;
