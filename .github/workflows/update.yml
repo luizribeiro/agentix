@@ -65,13 +65,20 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
+      # continue-on-error so a flaky per-package update (e.g. transient
+      # build failure during hash discovery) doesn't fail the matrix job
+      # and skip aggregate via needs:. We just don't upload an artifact
+      # for this package; aggregate will silently leave it on its current
+      # version and pick up the other packages.
       - name: Rewrite package files
         if: steps.versions.outputs.updated == 'true'
+        id: rewrite
+        continue-on-error: true
         run: |
           nu packages/${{ matrix.package }}/update.nu update-files "${{ steps.versions.outputs.latest }}"
 
       - name: Write status JSON
-        if: steps.versions.outputs.updated == 'true'
+        if: steps.versions.outputs.updated == 'true' && steps.rewrite.outcome == 'success'
         run: |
           mkdir -p update-result
           jq -n \
@@ -82,7 +89,7 @@ jobs:
             > update-result/${{ matrix.package }}.json
 
       - name: Upload artifact
-        if: steps.versions.outputs.updated == 'true'
+        if: steps.versions.outputs.updated == 'true' && steps.rewrite.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: update-${{ matrix.package }}
@@ -95,6 +102,10 @@ jobs:
   # README rewrite, verify with flake check, then commit + push.
   aggregate:
     needs: [discover, update]
+    # Run even if some matrix jobs failed (e.g. one package's update
+    # broke) so the rest still get committed. The job gracefully no-ops
+    # when no artifacts arrived.
+    if: always() && needs.discover.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
