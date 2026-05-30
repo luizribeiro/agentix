@@ -62,11 +62,13 @@ export def resolve-hash-by-build [
         return ""
     }
 
+    # Anchor on the 2/4-space package-level depth so we don't accidentally
+    # rewrite a same-named field inside a nested override (e.g. crush's
+    # go-toolchain pin has its own `hash = "sha256-…"` at 6-space).
     let content = open $file
-    let updated = (
-        $content
-        | str replace -r $'($field_name) = "sha256-[^"]*"' $'($field_name) = "($real_hash)"'
-    )
+    let pattern = '(?m)^( {2}| {4})' + $field_name + ' = "sha256-[^"]*"'
+    let replacement = '${1}' + $field_name + ' = "' + $real_hash + '"'
+    let updated = ($content | str replace -r $pattern $replacement)
     $updated | save -f $file
 
     print $"✓ ($label): ($real_hash)"

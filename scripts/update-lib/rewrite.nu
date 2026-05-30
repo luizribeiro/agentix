@@ -4,15 +4,30 @@
 # remaining positional args are the rewrite parameters. Callers pipe
 # `open file | rewrite-* ... | save -f file` so the I/O and rollback policy
 # stays at the call site.
+#
+# Indent convention used for anchoring:
+#   - The package's own `version` lives at 2-space indent in the let
+#     binding. Nested `version`s (e.g. crush's go-toolchain pin inside an
+#     `overrideAttrs` block) are deeper. rewrite-version targets 2-space
+#     only.
+#   - Package-level scalar fields (hash, vendorHash, npmDepsHash,
+#     outputHash, buildId, …) live at either 2-space (top-level rec body)
+#     or 4-space (inside `src = fetchurl { … }`). Nested fields inside
+#     platformInfo attrsets or overrideAttrs blocks are 6+-space.
+#     rewrite-field matches 2-or-4 only.
 
 export def rewrite-version [v: string]: string -> string {
-    $in | str replace -r 'version = "[^"]*"' $'version = "($v)"'
+    let replacement = '  version = "' + $v + '"'
+    $in | str replace -r '(?m)^  version = "[^"]*"' $replacement
 }
 
-# Rewrite a `<field> = "<value>"` pair anywhere in the file. Use for plain
-# scalar fields (e.g. buildId) and for the main hash field of FOD packages.
+# Rewrite a `<field> = "<value>"` pair at the package-level depth
+# (2- or 4-space indent). Use for plain scalar fields and for the main
+# hash field of FOD packages.
 export def rewrite-field [field: string, value: string]: string -> string {
-    $in | str replace -r $'($field) = "[^"]*"' $'($field) = "($value)"'
+    let pattern = '(?m)^( {2}| {4})' + $field + ' = "[^"]*"'
+    let replacement = '${1}' + $field + ' = "' + $value + '"'
+    $in | str replace -r $pattern $replacement
 }
 
 # Replace a hash whose location is uniquely identified by an `anchor_regex`
