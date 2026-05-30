@@ -16,13 +16,14 @@ const PLATFORMS = [
     [aarch64-linux, linux_arm64]
 ]
 const FILE = "packages/antigravity-cli/default.nix"
+const README_ANCHOR = '| `antigravity-cli` | `agy` |'
 
 def latest-version []: nothing -> string {
     let first = ($PLATFORMS | first)
     http get $"($MANIFEST_BASE)/($first.manifest).json" | get version
 }
 
-def do-update [version: string]: nothing -> bool {
+def update-files [version: string]: nothing -> bool {
     mut entries = []
     for p in $PLATFORMS {
         let url = $"($MANIFEST_BASE)/($p.manifest).json"
@@ -69,23 +70,30 @@ def do-update [version: string]: nothing -> bool {
     }
 
     $content | save -f $FILE
-    update-readme-row "antigravity-cli" $version '| `antigravity-cli` | `agy` |'
     true
+}
+
+def update-readme [version: string] {
+    update-readme-row "antigravity-cli" $version $README_ANCHOR
 }
 
 def main [command: string, version?: string] {
     match $command {
         "latest" => { print (latest-version) }
+        "readme-anchor" => { print $README_ANCHOR }
+        "update-files" => {
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            if not (update-files $version) { exit 1 }
+        }
+        "update-readme" => {
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            update-readme $version
+        }
         "update" => {
-            if ($version | is-empty) {
-                print "Error: update requires a version argument"
-                exit 2
-            }
-            if not (do-update $version) { exit 1 }
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            if not (update-files $version) { exit 1 }
+            update-readme $version
         }
-        _ => {
-            print $"Unknown command: ($command)"
-            exit 2
-        }
+        _ => { print $"Unknown command: ($command)"; exit 2 }
     }
 }

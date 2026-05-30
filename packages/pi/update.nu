@@ -2,6 +2,8 @@
 
 use ../../scripts/update-lib *
 
+const README_ANCHOR = '| `pi` | `pi` |'
+
 def latest-version []: nothing -> string {
     latest-from-npm "@mariozechner/pi-coding-agent"
 }
@@ -27,34 +29,39 @@ def regenerate-lockfile [version: string]: nothing -> bool {
     true
 }
 
-def do-update [version: string]: nothing -> bool {
+def update-files [version: string]: nothing -> bool {
     if not (regenerate-lockfile $version) { return false }
-    let ok = (update-multihash {
+    update-multihash {
         file: "packages/pi/default.nix"
         hash_steps: [
             [field, label];
             [hash, "source hash"]
             [npmDepsHash, "npmDepsHash"]
         ]
-    } "pi" $version)
-    if not $ok { return false }
-    update-readme-row "pi" $version '| `pi` | `pi` |'
-    true
+    } "pi" $version
+}
+
+def update-readme [version: string] {
+    update-readme-row "pi" $version $README_ANCHOR
 }
 
 def main [command: string, version?: string] {
     match $command {
         "latest" => { print (latest-version) }
+        "readme-anchor" => { print $README_ANCHOR }
+        "update-files" => {
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            if not (update-files $version) { exit 1 }
+        }
+        "update-readme" => {
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            update-readme $version
+        }
         "update" => {
-            if ($version | is-empty) {
-                print "Error: update requires a version argument"
-                exit 2
-            }
-            if not (do-update $version) { exit 1 }
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            if not (update-files $version) { exit 1 }
+            update-readme $version
         }
-        _ => {
-            print $"Unknown command: ($command)"
-            exit 2
-        }
+        _ => { print $"Unknown command: ($command)"; exit 2 }
     }
 }

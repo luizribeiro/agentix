@@ -2,37 +2,44 @@
 
 use ../../scripts/update-lib *
 
+const README_ANCHOR = '| `opencode` | `opencode` |'
+
 def latest-version []: nothing -> string {
     latest-from-github "anomalyco" "opencode"
 }
 
-def do-update [version: string]: nothing -> bool {
-    let ok = (update-multihash {
+def update-files [version: string]: nothing -> bool {
+    update-multihash {
         file: "packages/opencode/default.nix"
         hash_steps: [
             [field, label];
             [hash, "source hash"]
             [outputHash, "node_modules outputHash"]
         ]
-    } "opencode" $version)
-    if not $ok { return false }
-    update-readme-row "opencode" $version '| `opencode` | `opencode` |'
-    true
+    } "opencode" $version
+}
+
+def update-readme [version: string] {
+    update-readme-row "opencode" $version $README_ANCHOR
 }
 
 def main [command: string, version?: string] {
     match $command {
         "latest" => { print (latest-version) }
+        "readme-anchor" => { print $README_ANCHOR }
+        "update-files" => {
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            if not (update-files $version) { exit 1 }
+        }
+        "update-readme" => {
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            update-readme $version
+        }
         "update" => {
-            if ($version | is-empty) {
-                print "Error: update requires a version argument"
-                exit 2
-            }
-            if not (do-update $version) { exit 1 }
+            if ($version | is-empty) { print "Error: version required"; exit 2 }
+            if not (update-files $version) { exit 1 }
+            update-readme $version
         }
-        _ => {
-            print $"Unknown command: ($command)"
-            exit 2
-        }
+        _ => { print $"Unknown command: ($command)"; exit 2 }
     }
 }
