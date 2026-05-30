@@ -1,5 +1,5 @@
 {
-  description = "agentix - Your AI agents, packaged with Nix (codex-cli, claude-code, gemini-cli, antigravity-cli, crush, opencode, pi)";
+  description = "agentix - Your AI agents, packaged with Nix";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -8,9 +8,11 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
+      lib = nixpkgs.lib;
+
       agentixLib = import ./lib {
-        lib = nixpkgs.lib;
-        nixosSystem = nixpkgs.lib.nixosSystem;
+        inherit lib;
+        nixosSystem = lib.nixosSystem;
       };
 
       inherit (agentixLib)
@@ -22,6 +24,15 @@
         "aarch64-linux"
         "x86_64-linux"
       ];
+
+      # Discover every subdirectory of packages/ that has a default.nix.
+      # Same enumeration the overlay uses.
+      packageNames = lib.attrNames (
+        lib.filterAttrs
+          (name: type: type == "directory"
+            && builtins.pathExists (./packages + "/${name}/default.nix"))
+          (builtins.readDir ./packages)
+      );
     in
     {
       # Expose pre-built packages so consumers aren't forced to rebuild
@@ -47,30 +58,22 @@
           overlays = [ overlay ];
         };
 
+        discoveredPackages = lib.genAttrs packageNames (name: pkgs.${name});
+
+        # Each app's binary name comes from meta.mainProgram on the package.
+        # `nix run .#<bin>` matches the actual CLI name.
+        appsByBin = lib.mapAttrs'
+          (name: pkg: lib.nameValuePair pkg.meta.mainProgram {
+            type = "app";
+            program = "${pkg}/bin/${pkg.meta.mainProgram}";
+          })
+          discoveredPackages;
       in
       {
-        packages = {
-          codex-cli = pkgs.codex-cli;
-          claude-code = pkgs.claude-code;
-          gemini-cli = pkgs.gemini-cli;
-          antigravity-cli = pkgs.antigravity-cli;
-          crush = pkgs.crush;
-          opencode = pkgs.opencode;
-          pi = pkgs.pi;
-          roborev = pkgs.roborev;
-
+        packages = discoveredPackages // {
           default = pkgs.buildEnv {
             name = "agentix";
-            paths = [
-              pkgs.codex-cli
-              pkgs.claude-code
-              pkgs.gemini-cli
-              pkgs.antigravity-cli
-              pkgs.crush
-              pkgs.opencode
-              pkgs.pi
-              pkgs.roborev
-            ];
+            paths = lib.attrValues discoveredPackages;
             meta = {
               description = "agentix - Your AI agents, packaged with Nix";
               platforms = supportedSystems;
@@ -78,47 +81,7 @@
           };
         };
 
-        apps = {
-          codex = {
-            type = "app";
-            program = "${pkgs.codex-cli}/bin/codex";
-          };
-
-          claude = {
-            type = "app";
-            program = "${pkgs.claude-code}/bin/claude";
-          };
-
-          gemini = {
-            type = "app";
-            program = "${pkgs.gemini-cli}/bin/gemini";
-          };
-
-          agy = {
-            type = "app";
-            program = "${pkgs.antigravity-cli}/bin/agy";
-          };
-
-          crush = {
-            type = "app";
-            program = "${pkgs.crush}/bin/crush";
-          };
-
-          opencode = {
-            type = "app";
-            program = "${pkgs.opencode}/bin/opencode";
-          };
-
-          pi = {
-            type = "app";
-            program = "${pkgs.pi}/bin/pi";
-          };
-
-          roborev = {
-            type = "app";
-            program = "${pkgs.roborev}/bin/roborev";
-          };
-
+        apps = appsByBin // {
           default = self.apps.${system}.claude;
         };
 
@@ -139,26 +102,12 @@
             echo "  - nix-prefetch-git: Prefetch git repositories"
             echo "  - nu: Nushell for running update scripts"
             echo ""
-            echo "Update packages:"
-            echo "  ./scripts/update-package.nu codex-cli"
-            echo "  ./scripts/update-package.nu claude-code"
-            echo "  ./scripts/update-package.nu gemini-cli"
-            echo "  ./scripts/update-package.nu antigravity-cli"
-            echo "  ./scripts/update-package.nu crush"
-            echo "  ./scripts/update-package.nu opencode"
-            echo "  ./scripts/update-package.nu pi"
-            echo "  ./scripts/update-package.nu roborev"
+            echo "Packages (${toString (lib.length packageNames)}):"
+            ${lib.concatMapStringsSep "\n            " (n: ''echo "  - ${n}"'') packageNames}
             echo ""
-            echo "Build packages:"
-            echo "  nix build .#codex-cli"
-            echo "  nix build .#claude-code"
-            echo "  nix build .#gemini-cli"
-            echo "  nix build .#antigravity-cli"
-            echo "  nix build .#crush"
-            echo "  nix build .#opencode"
-            echo "  nix build .#pi"
-            echo "  nix build .#roborev"
-            echo "  nix build .#default  # agentix with all eight tools"
+            echo "Update a package:    ./scripts/update-package.nu <name>"
+            echo "Build a package:     nix build .#<name>"
+            echo "Build all packages:  nix build .#default"
           '';
         };
       });
