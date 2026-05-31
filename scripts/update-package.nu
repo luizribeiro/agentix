@@ -1,5 +1,17 @@
 #!/usr/bin/env nu
 
+# Put the nushell update library on the search path so per-package
+# modules can `use update-lib *` without the relative ../../ traversal.
+# The dispatcher itself lives in scripts/, so $env.FILE_PWD is exactly
+# the directory we want NU_LIB_DIRS to point at.
+#
+# Set as a colon-separated STRING (not a list): when nushell spawns a
+# child `^nu -c` process, only string-typed env vars survive the OS
+# boundary. Child nushell then auto-parses NU_LIB_DIRS from the OS
+# environment back into its own list. A list-typed parent $env.NU_LIB_DIRS
+# silently fails to propagate.
+$env.NU_LIB_DIRS = $env.FILE_PWD
+
 # Dispatch to each package's own update module.
 #
 # Discovers `packages/<name>/update.nu` modules and invokes the matching

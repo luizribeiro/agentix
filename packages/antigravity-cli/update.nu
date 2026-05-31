@@ -1,4 +1,4 @@
-use ../../scripts/update-lib *
+use update-lib *
 
 # Antigravity ships closed-source prebuilt binaries through Google's own
 # auto-updater endpoint (no GitHub releases, no npm). Each per-platform

@@ -1,4 +1,4 @@
-use ../../scripts/update-lib *
+use update-lib *
 
 export const README_ANCHOR = '| `pi` | `pi` |'
 

@@ -95,6 +95,10 @@
           ];
 
           shellHook = ''
+            # Put the nushell update library on the search path so per-package
+            # modules can `use update-lib *` without the relative ../../ traversal.
+            export NU_LIB_DIRS="$(pwd)/scripts''${NU_LIB_DIRS:+:$NU_LIB_DIRS}"
+
             echo "agentix - Development Shell"
             echo "==========================="
             echo "Available commands:"
