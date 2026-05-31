@@ -120,7 +120,7 @@ jobs:
           path: artifacts
           pattern: update-*
 
-      - name: Apply file updates and regenerate README
+      - name: Apply per-package artifacts
         id: apply
         run: |
           set -euo pipefail
@@ -138,11 +138,6 @@ jobs:
             cp -r "$dir/packages/$pkg/." "packages/$pkg/"
             UPDATED_PKGS+=("$pkg")
           done
-
-          # Regenerate the README package table once from the merged
-          # tree — render-readme reads version + meta.{description,
-          # mainProgram} straight out of each default.nix.
-          nu scripts/render-readme.nu
 
           if [ ${#UPDATED_PKGS[@]} -eq 0 ]; then
             echo "any-updated=false" >> $GITHUB_OUTPUT
@@ -163,6 +158,13 @@ jobs:
 
           echo "--- commit message ---"
           cat commit-message.txt
+
+      # Regenerate the README package table from the merged tree —
+      # render-readme reads version + meta.{description, mainProgram}
+      # straight out of each default.nix.
+      - name: Regenerate README
+        if: steps.apply.outputs.any-updated == 'true'
+        run: nu scripts/render-readme.nu
 
       - name: Flake check
         if: steps.apply.outputs.any-updated == 'true'
