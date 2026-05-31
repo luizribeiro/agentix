@@ -1,11 +1,18 @@
-# Generic runner for declarative `packages/<name>/update.toml` configs.
+# Generic runner for declarative `CONFIG` records exported from
+# packages/<name>/update.nu. A package's update module can be:
 #
-# Each TOML carries enough information to drive a shared strategy (FOD or
-# multihash) against either an npm or GitHub source. Packages whose
-# distribution doesn't fit either strategy keep using `update.nu` and the
-# dispatcher reaches for that path instead.
+#   pure declarative — only `export const CONFIG = { ... }`. The runner
+#       computes `latest-version` and `update-files` from CONFIG.
 #
-# Expected TOML shape:
+#   pure custom — `export def latest-version` + `export def update-files`
+#       with bodies that call lower-level lib helpers. No CONFIG.
+#
+#   mixed — `export const CONFIG = { ... }` PLUS one or both of
+#       `export def latest-version` / `export def update-files`. The
+#       function exports win where they exist; the runner is used for
+#       whichever side delegates back to CONFIG.
+#
+# Expected CONFIG shape:
 #
 #     [source]
 #     type = "npm"              # or "github"
@@ -27,20 +34,8 @@
 use registry.nu *
 use strategies.nu *
 
-def read-config [toml_path: string]: nothing -> record {
-    open $toml_path
-}
-
-def nix-file-for [toml_path: string]: nothing -> string {
-    ($toml_path | path dirname) + "/default.nix"
-}
-
-def pkg-name-for [toml_path: string]: nothing -> string {
-    $toml_path | path dirname | path basename
-}
-
-export def run-latest [toml_path: string]: nothing -> string {
-    let cfg = (read-config $toml_path)
+# Compute the latest upstream version from a config record.
+export def latest-from-config [cfg: record]: nothing -> string {
     match $cfg.source.type {
         "npm"    => { latest-from-npm $cfg.source.name }
         "github" => { latest-from-github $cfg.source.owner $cfg.source.repo }
@@ -50,10 +45,11 @@ export def run-latest [toml_path: string]: nothing -> string {
     }
 }
 
-export def run-update-files [toml_path: string, version: string]: nothing -> bool {
-    let cfg = (read-config $toml_path)
-    let pkg = (pkg-name-for $toml_path)
-    let nix = (nix-file-for $toml_path)
+# Rewrite the package's default.nix to pin the given version, using the
+# strategy declared in the config. `package` is the directory name; the
+# default.nix path is derived from it.
+export def update-files-from-config [cfg: record, package: string, version: string]: nothing -> bool {
+    let nix = $"packages/($package)/default.nix"
     match $cfg.strategy.type {
         "fod" => {
             let layout = ($cfg.strategy | get -o platform_layout | default "suffix")
@@ -68,7 +64,7 @@ export def run-update-files [toml_path: string, version: string]: nothing -> boo
             update-multihash {
                 file:       $nix
                 hash_steps: $cfg.strategy.hash_steps
-            } $pkg $version
+            } $package $version
         }
         _ => {
             error make { msg: $"Unknown strategy.type: ($cfg.strategy.type)" }

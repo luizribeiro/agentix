@@ -1,0 +1,10 @@
+export const CONFIG = {
+    source: { type: "github", owner: "roborev-dev", repo: "roborev" }
+    strategy: {
+        type: "multihash"
+        hash_steps: [
+            { field: "hash",       label: "source hash" }
+            { field: "vendorHash", label: "vendorHash"  }
+        ]
+    }
+}

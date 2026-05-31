@@ -1,5 +1,16 @@
 use update-lib *
 
+export const CONFIG = {
+    source: { type: "npm", name: "@mariozechner/pi-coding-agent" }
+    strategy: {
+        type: "multihash"
+        hash_steps: [
+            { field: "hash",        label: "source hash" }
+            { field: "npmDepsHash", label: "npmDepsHash" }
+        ]
+    }
+}
+
 # pi ships without a package-lock.json in its npm tarball, so we regenerate
 # one from the published tarball before letting update-multihash compute
 # npmDepsHash. Without this the build can't reproduce the node_modules tree.
@@ -21,18 +32,9 @@ def regenerate-lockfile [version: string]: nothing -> bool {
     true
 }
 
-export def latest-version []: nothing -> string {
-    latest-from-npm "@mariozechner/pi-coding-agent"
-}
-
+# Override the declarative update-files to add the lockfile regen step
+# before delegating to the standard multihash strategy.
 export def update-files [version: string]: nothing -> bool {
     if not (regenerate-lockfile $version) { return false }
-    update-multihash {
-        file: "packages/pi/default.nix"
-        hash_steps: [
-            [field, label];
-            [hash, "source hash"]
-            [npmDepsHash, "npmDepsHash"]
-        ]
-    } "pi" $version
+    update-files-from-config $CONFIG "pi" $version
 }

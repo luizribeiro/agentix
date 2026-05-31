@@ -51,47 +51,36 @@ jobs:
       - name: Install Nushell
         run: nix profile install nixpkgs#nushell
 
-      - name: Compute current vs latest
-        id: versions
-        run: |
-          LATEST=$(nu -c "use packages/${{ matrix.package }}/update.nu *; latest-version" | tr -d '\n')
-          CURRENT=$(grep -m1 -E '^  version = "' packages/${{ matrix.package }}/default.nix \
-            | sed -E 's/.*"([^"]+)".*/\1/')
-          echo "Current: $CURRENT"
-          echo "Latest:  $LATEST"
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          if [ "$CURRENT" = "$LATEST" ]; then
-            echo "updated=false" >> $GITHUB_OUTPUT
-          else
-            echo "updated=true" >> $GITHUB_OUTPUT
-          fi
-
       # continue-on-error so a flaky per-package update (e.g. transient
       # build failure during hash discovery) doesn't fail the matrix job
       # and skip aggregate via needs:. We just don't upload an artifact
       # for this package; aggregate will silently leave it on its current
       # version and pick up the other packages.
-      - name: Rewrite package files
-        if: steps.versions.outputs.updated == 'true'
-        id: rewrite
+      - name: Run update
+        id: update
         continue-on-error: true
         run: |
-          nu -c "use packages/${{ matrix.package }}/update.nu *; update-files '${{ steps.versions.outputs.latest }}'"
+          OUTPUT=$(nu scripts/update-package.nu ${{ matrix.package }})
+          echo "$OUTPUT"
+          {
+            echo "updated=$(echo "$OUTPUT" | grep '^updated=' | cut -d= -f2)"
+            echo "current=$(echo "$OUTPUT" | grep '^current=' | cut -d= -f2)"
+            echo "latest=$(echo "$OUTPUT" | grep '^latest='  | cut -d= -f2)"
+          } >> $GITHUB_OUTPUT
 
       - name: Write status JSON
-        if: steps.versions.outputs.updated == 'true' && steps.rewrite.outcome == 'success'
+        if: steps.update.outputs.updated == 'true' && steps.update.outcome == 'success'
         run: |
           mkdir -p update-result
           jq -n \
             --arg pkg "${{ matrix.package }}" \
-            --arg current "${{ steps.versions.outputs.current }}" \
-            --arg latest "${{ steps.versions.outputs.latest }}" \
+            --arg current "${{ steps.update.outputs.current }}" \
+            --arg latest "${{ steps.update.outputs.latest }}" \
             '{package: $pkg, current: $current, latest: $latest}' \
             > update-result/${{ matrix.package }}.json
 
       - name: Upload artifact
-        if: steps.versions.outputs.updated == 'true' && steps.rewrite.outcome == 'success'
+        if: steps.update.outputs.updated == 'true' && steps.update.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: update-${{ matrix.package }}
@@ -131,7 +120,7 @@ jobs:
           path: artifacts
           pattern: update-*
 
-      - name: Apply file updates and refresh READMEs
+      - name: Apply file updates and regenerate README
         id: apply
         run: |
           set -euo pipefail
@@ -147,10 +136,13 @@ jobs:
             # The matrix-modified packages/<pkg>/ tree replaces the
             # checkout's copy. Each artifact's files are disjoint.
             cp -r "$dir/packages/$pkg/." "packages/$pkg/"
-            version=$(jq -r .latest "$status_file")
-            nu -c "use packages/$pkg/update.nu *; update-readme '$version'"
             UPDATED_PKGS+=("$pkg")
           done
+
+          # Regenerate the README package table once from the merged
+          # tree — render-readme reads version + meta.{description,
+          # mainProgram} straight out of each default.nix.
+          nu scripts/render-readme.nu
 
           if [ ${#UPDATED_PKGS[@]} -eq 0 ]; then
             echo "any-updated=false" >> $GITHUB_OUTPUT

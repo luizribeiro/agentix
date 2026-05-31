@@ -1,0 +1,8 @@
+export const CONFIG = {
+    source: { type: "npm", name: "@anthropic-ai/claude-code" }
+    strategy: {
+        type: "fod"
+        platform_suffixes: ["darwin-arm64", "linux-x64", "linux-arm64"]
+        platform_layout: "subpackage"
+    }
+}

@@ -1,0 +1,10 @@
+export const CONFIG = {
+    source: { type: "github", owner: "charmbracelet", repo: "crush" }
+    strategy: {
+        type: "multihash"
+        hash_steps: [
+            { field: "hash",       label: "source hash" }
+            { field: "vendorHash", label: "vendorHash"  }
+        ]
+    }
+}

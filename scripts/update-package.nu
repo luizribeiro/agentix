@@ -30,7 +30,7 @@ def discover-packages []: nothing -> list<string> {
         | where type == dir
         | get name
         | path basename
-        | where {|p| (($"packages/($p)/update.nu" | path exists) or ($"packages/($p)/update.toml" | path exists))}
+        | where {|p| ($"packages/($p)/update.nu" | path exists)}
         | sort
 }
 
@@ -38,30 +38,44 @@ def discover-packages []: nothing -> list<string> {
 # package: { latest, files }. `files` carries the placeholder `<V>`
 # which the caller substitutes with the resolved version.
 #
-# A package can use either an `update.nu` (custom) or an `update.toml`
-# (declarative). `update.nu` wins when both exist so a package can start
-# declarative and override later without renaming files.
+# A package's update.nu can be:
+#
+#   declarative — only exports `CONFIG`. Runner derives latest-version
+#       and update-files from it.
+#   custom — exports `latest-version` and `update-files` (and no CONFIG).
+#   mixed — exports `CONFIG` AND overrides one or both functions.
+#
+# Detection is by grepping the module source for the relevant exports.
+# Cheap (one file read per package), and the convention is human-visible
+# in the module itself.
 #
 # README rewriting is intentionally NOT a per-package concern; the
 # dispatcher calls `render-readme.nu` once after the batch finishes so
 # the table block in README.md regenerates from each default.nix's
 # meta.{mainProgram,description}.
 def invoke-spec [package: string]: nothing -> record {
-    let mod_path  = $"packages/($package)/update.nu"
-    let toml_path = $"packages/($package)/update.toml"
-    if ($mod_path | path exists) {
-        {
-            latest: $"use ($mod_path) *; latest-version"
-            files:  $"use ($mod_path) *; if not \(update-files '<V>'\) { exit 1 }"
-        }
-    } else if ($toml_path | path exists) {
-        {
-            latest: $"use update-lib *; run-latest '($toml_path)'"
-            files:  $"use update-lib *; if not \(run-update-files '($toml_path)' '<V>'\) { exit 1 }"
-        }
+    let mod_path = $"packages/($package)/update.nu"
+    let src = (open --raw $mod_path)
+    let has_custom_latest = ($src | str contains "export def latest-version")
+    let has_custom_files  = ($src | str contains "export def update-files")
+    let has_config        = ($src | str contains "export const CONFIG")
+
+    let prelude = $"use update-lib *; use ($mod_path) *;"
+    let latest = if $has_custom_latest {
+        $"($prelude) latest-version"
+    } else if $has_config {
+        $"($prelude) latest-from-config $CONFIG"
     } else {
-        error make { msg: $"No update.nu or update.toml for ($package)" }
+        error make { msg: $"($package): update.nu has no `latest-version` or `CONFIG` export" }
     }
+    let files = if $has_custom_files {
+        $"($prelude) if not \(update-files '<V>'\) { exit 1 }"
+    } else if $has_config {
+        $"($prelude) if not \(update-files-from-config $CONFIG '($package)' '<V>'\) { exit 1 }"
+    } else {
+        error make { msg: $"($package): update.nu has no `update-files` or `CONFIG` export" }
+    }
+    { latest: $latest, files: $files }
 }
 
 def read-current-version [file: string]: nothing -> string {

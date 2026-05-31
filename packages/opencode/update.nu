@@ -1,0 +1,10 @@
+export const CONFIG = {
+    source: { type: "github", owner: "anomalyco", repo: "opencode" }
+    strategy: {
+        type: "multihash"
+        hash_steps: [
+            { field: "hash",       label: "source hash" }
+            { field: "outputHash", label: "node_modules outputHash" }
+        ]
+    }
+}
