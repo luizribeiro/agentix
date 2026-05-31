@@ -9,3 +9,4 @@ export use hashes.nu *
 export use rewrite.nu *
 export use readme.nu *
 export use strategies.nu *
+export use runner.nu *

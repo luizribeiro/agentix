@@ -18,8 +18,33 @@ def discover-packages []: nothing -> list<string> {
         | where type == dir
         | get name
         | path basename
-        | where {|p| ($"packages/($p)/update.nu" | path exists)}
+        | where {|p| (($"packages/($p)/update.nu" | path exists) or ($"packages/($p)/update.toml" | path exists))}
         | sort
+}
+
+# Returns the `nu -c` strings the dispatcher should invoke for this
+# package: { latest, combo }. `combo` carries the placeholder `<V>` which
+# the caller substitutes with the resolved version.
+#
+# A package can use either an `update.nu` (custom) or an `update.toml`
+# (declarative). `update.nu` wins when both exist so a package can start
+# declarative and override later without renaming files.
+def invoke-spec [package: string]: nothing -> record {
+    let mod_path  = $"packages/($package)/update.nu"
+    let toml_path = $"packages/($package)/update.toml"
+    if ($mod_path | path exists) {
+        {
+            latest: $"use ($mod_path) *; latest-version"
+            combo:  $"use ($mod_path) *; if \(update-files '<V>'\) { update-readme '<V>' } else { exit 1 }"
+        }
+    } else if ($toml_path | path exists) {
+        {
+            latest: $"use scripts/update-lib *; run-latest '($toml_path)'"
+            combo:  $"use scripts/update-lib *; if \(run-update-files '($toml_path)' '<V>'\) { run-update-readme '($toml_path)' '<V>' } else { exit 1 }"
+        }
+    } else {
+        error make { msg: $"No update.nu or update.toml for ($package)" }
+    }
 }
 
 def read-current-version [file: string]: nothing -> string {
@@ -37,11 +62,11 @@ def read-current-version [file: string]: nothing -> string {
 # the CI matrix's expectations) and returns a status record the caller
 # uses for the batch summary.
 def update-one [package: string]: nothing -> record {
-    let mod_path = $"packages/($package)/update.nu"
     let nix_file = $"packages/($package)/default.nix"
+    let spec = (invoke-spec $package)
 
     print $"Fetching latest version for ($package)..."
-    let latest = (^nu -c $"use ($mod_path) *; latest-version" | str trim)
+    let latest = (^nu -c $spec.latest | str trim)
     let current = (read-current-version $nix_file)
 
     print $"Current: ($current)"
@@ -58,7 +83,7 @@ def update-one [package: string]: nothing -> record {
     # Compose update-files + update-readme in a single subprocess so we
     # pay the nushell-startup cost only once and so the README rewrite
     # is skipped automatically if the file rewrite fails.
-    let combo = $"use ($mod_path) *; if \(update-files '($latest)'\) { update-readme '($latest)' } else { exit 1 }"
+    let combo = ($spec.combo | str replace -a '<V>' $latest)
     let result = (^nu -c $combo | complete)
     print $result.stdout
     if $result.exit_code != 0 {
