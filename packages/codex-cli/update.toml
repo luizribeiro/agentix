@@ -1,5 +1,3 @@
-readme_row = "| `codex-cli` | `codex` |"
-
 [source]
 type = "npm"
 name = "@openai/codex"

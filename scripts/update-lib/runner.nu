@@ -7,8 +7,6 @@
 #
 # Expected TOML shape:
 #
-#     readme_row = "| `<package>` | `<binary>` |"
-#
 #     [source]
 #     type = "npm"              # or "github"
 #     name = "@scope/name"      # npm only
@@ -27,7 +25,6 @@
 #     ]
 
 use registry.nu *
-use readme.nu *
 use strategies.nu *
 
 def read-config [toml_path: string]: nothing -> record {
@@ -77,10 +74,4 @@ export def run-update-files [toml_path: string, version: string]: nothing -> boo
             error make { msg: $"Unknown strategy.type: ($cfg.strategy.type)" }
         }
     }
-}
-
-export def run-update-readme [toml_path: string, version: string] {
-    let cfg = (read-config $toml_path)
-    let pkg = (pkg-name-for $toml_path)
-    update-readme-row $pkg $version $cfg.readme_row
 }

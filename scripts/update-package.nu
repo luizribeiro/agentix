@@ -35,24 +35,29 @@ def discover-packages []: nothing -> list<string> {
 }
 
 # Returns the `nu -c` strings the dispatcher should invoke for this
-# package: { latest, combo }. `combo` carries the placeholder `<V>` which
-# the caller substitutes with the resolved version.
+# package: { latest, files }. `files` carries the placeholder `<V>`
+# which the caller substitutes with the resolved version.
 #
 # A package can use either an `update.nu` (custom) or an `update.toml`
 # (declarative). `update.nu` wins when both exist so a package can start
 # declarative and override later without renaming files.
+#
+# README rewriting is intentionally NOT a per-package concern; the
+# dispatcher calls `render-readme.nu` once after the batch finishes so
+# the table block in README.md regenerates from each default.nix's
+# meta.{mainProgram,description}.
 def invoke-spec [package: string]: nothing -> record {
     let mod_path  = $"packages/($package)/update.nu"
     let toml_path = $"packages/($package)/update.toml"
     if ($mod_path | path exists) {
         {
             latest: $"use ($mod_path) *; latest-version"
-            combo:  $"use ($mod_path) *; if \(update-files '<V>'\) { update-readme '<V>' } else { exit 1 }"
+            files:  $"use ($mod_path) *; if not \(update-files '<V>'\) { exit 1 }"
         }
     } else if ($toml_path | path exists) {
         {
-            latest: $"use scripts/update-lib *; run-latest '($toml_path)'"
-            combo:  $"use scripts/update-lib *; if \(run-update-files '($toml_path)' '<V>'\) { run-update-readme '($toml_path)' '<V>' } else { exit 1 }"
+            latest: $"use update-lib *; run-latest '($toml_path)'"
+            files:  $"use update-lib *; if not \(run-update-files '($toml_path)' '<V>'\) { exit 1 }"
         }
     } else {
         error make { msg: $"No update.nu or update.toml for ($package)" }
@@ -92,11 +97,8 @@ def update-one [package: string]: nothing -> record {
 
     print $"↻ Updating ($package) from ($current) to ($latest)"
 
-    # Compose update-files + update-readme in a single subprocess so we
-    # pay the nushell-startup cost only once and so the README rewrite
-    # is skipped automatically if the file rewrite fails.
-    let combo = ($spec.combo | str replace -a '<V>' $latest)
-    let result = (^nu -c $combo | complete)
+    let files_cmd = ($spec.files | str replace -a '<V>' $latest)
+    let result = (^nu -c $files_cmd | complete)
     print $result.stdout
     if $result.exit_code != 0 {
         if not ($result.stderr | is-empty) { print $result.stderr }
@@ -151,6 +153,11 @@ def main [
         }
         $results = ($results | append (update-one $pkg))
     }
+
+    # Regenerate README.md's package table once, after all per-package
+    # rewrites are done. Cheap when nothing changed (idempotent).
+    print ""
+    ^nu $"($env.FILE_PWD)/render-readme.nu"
 
     if $is_batch {
         print ""

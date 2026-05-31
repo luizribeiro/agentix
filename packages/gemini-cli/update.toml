@@ -1,5 +1,3 @@
-readme_row = "| `gemini-cli` | `gemini` |"
-
 [source]
 type = "npm"
 name = "@google/gemini-cli"

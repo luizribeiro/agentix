@@ -1,7 +1,5 @@
 use update-lib *
 
-export const README_ANCHOR = '| `pi` | `pi` |'
-
 # pi ships without a package-lock.json in its npm tarball, so we regenerate
 # one from the published tarball before letting update-multihash compute
 # npmDepsHash. Without this the build can't reproduce the node_modules tree.
@@ -37,8 +35,4 @@ export def update-files [version: string]: nothing -> bool {
             [npmDepsHash, "npmDepsHash"]
         ]
     } "pi" $version
-}
-
-export def update-readme [version: string] {
-    update-readme-row "pi" $version $README_ANCHOR
 }

@@ -1,6 +1,6 @@
 # Reusable update strategies. Packages with bespoke distribution models can
-# skip these and write their `update` function inline using the lower-level
-# helpers in registry.nu / hashes.nu / rewrite.nu / readme.nu.
+# skip these and write their `update-files` function inline using the
+# lower-level helpers in registry.nu / hashes.nu / rewrite.nu.
 
 use hashes.nu *
 use rewrite.nu *

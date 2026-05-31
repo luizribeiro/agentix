@@ -1,5 +1,3 @@
-readme_row = "| `opencode` | `opencode` |"
-
 [source]
 type = "github"
 owner = "anomalyco"

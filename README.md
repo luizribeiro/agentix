@@ -8,19 +8,24 @@ Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.
 
 ## Available packages
 
+<!-- BEGIN package-table -->
+
 | Package | Binary | Version | Description |
 |---------|--------|---------|-------------|
+| `antigravity-cli` | `agy` | 1.0.3 | Google's Antigravity CLI - terminal-based AI coding agent |
+| `claude-code` | `claude` | 2.1.158 | Claude Code CLI - Anthropic's official CLI for Claude |
 | `codex-cli` | `codex` | 0.135.0 | OpenAI Codex CLI tool |
-| `claude-code` | `claude` | 2.1.158 | Anthropic's official CLI for Claude |
-| `gemini-cli` | `gemini` | 0.44.1 | Google's Gemini AI CLI |
-| `antigravity-cli` | `agy` | 1.0.3 | Google's Antigravity CLI (successor to Gemini CLI) |
-| `crush` | `crush` | 0.74.1 | Charmbracelet's AI coding agent |
-| `opencode` | `opencode` | 1.15.13 | Anomaly's AI coding agent |
-| `pi` | `pi` | 0.73.1 | pi.dev minimal terminal-based coding agent |
+| `crush` | `crush` | 0.74.1 | The glamourous AI coding agent for your favourite terminal |
+| `gemini-cli` | `gemini` | 0.44.1 | AI agent that brings the power of Gemini directly into your terminal |
+| `opencode` | `opencode` | 1.15.13 | AI coding agent built for the terminal |
+| `pi` | `pi` | 0.73.1 | pi.dev - A minimal terminal-based coding agent |
 | `roborev` | `roborev` | 0.56.0 | Continuous code review daemon for AI coding agents |
 | `default` | all | - | Combined package with all tools |
+<!-- END package-table -->
 
-Package versions are continuously refreshed via the repository update workflow.
+The table above is regenerated from each package's `default.nix` by
+`./scripts/render-readme.nu`. Versions are continuously refreshed via
+the auto-update workflow.
 
 Inspired by [codex-cli-nix](https://github.com/sadjow/codex-cli-nix) and [claude-code-nix](https://github.com/sadjow/claude-code-nix).
 

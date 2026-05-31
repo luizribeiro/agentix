@@ -15,8 +15,6 @@ const PLATFORMS = [
 ]
 const FILE = "packages/antigravity-cli/default.nix"
 
-export const README_ANCHOR = '| `antigravity-cli` | `agy` |'
-
 export def latest-version []: nothing -> string {
     let first = ($PLATFORMS | first)
     http get $"($MANIFEST_BASE)/($first.manifest).json" | get version
@@ -70,8 +68,4 @@ export def update-files [version: string]: nothing -> bool {
 
     $content | save -f $FILE
     true
-}
-
-export def update-readme [version: string] {
-    update-readme-row "antigravity-cli" $version $README_ANCHOR
 }
