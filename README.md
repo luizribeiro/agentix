@@ -96,14 +96,12 @@ nix flake check
 ## Updating packages
 
 ```bash
+# every discovered package
+./scripts/update-package.nu --all
+
+# one or more by name
 ./scripts/update-package.nu codex-cli
-./scripts/update-package.nu claude-code
-./scripts/update-package.nu gemini-cli
-./scripts/update-package.nu antigravity-cli
-./scripts/update-package.nu crush
-./scripts/update-package.nu opencode
-./scripts/update-package.nu pi
-./scripts/update-package.nu roborev
+./scripts/update-package.nu codex-cli claude-code
 ```
 
 ## Notes

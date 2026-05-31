@@ -105,7 +105,7 @@
             echo "Packages (${toString (lib.length packageNames)}):"
             ${lib.concatMapStringsSep "\n            " (n: ''echo "  - ${n}"'') packageNames}
             echo ""
-            echo "Update a package:    ./scripts/update-package.nu <name>"
+            echo "Update packages:     ./scripts/update-package.nu [--all] <name>..."
             echo "Build a package:     nix build .#<name>"
             echo "Build all packages:  nix build .#default"
           '';
