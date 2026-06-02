@@ -22,16 +22,16 @@ let
 in
 buildGo125Module' rec {
   pname = "crush";
-  version = "0.74.1";
+  version = "0.75.0";
 
   src = fetchFromGitHub {
     owner = "charmbracelet";
     repo = "crush";
     rev = "v${version}";
-    hash = "sha256-JnELv8Q2GlOKhYbBRUDY8m8XuyyoD71Tw5qbnpbNxVY=";
+    hash = "sha256-a5SItUvr6kRlF8mzP5a7tRvULCAvclvK+PcyL/USbWA=";
   };
 
-  vendorHash = "sha256-D2GJ3ORyJy5Dn0MZJWgB3Wv1FyDoAWqLI3W0yU1q5Lw=";
+  vendorHash = "sha256-4zJ4mXVefVNHonTPDx8HCWtmymXJF0Z44Sm07/cjBx0=";
 
   nativeBuildInputs = [ installShellFiles ];
 
