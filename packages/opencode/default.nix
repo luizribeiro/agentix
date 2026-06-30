@@ -14,13 +14,13 @@ let
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "opencode";
-  version = "1.17.11";
+  version = "1.17.12";
 
   src = fetchFromGitHub {
     owner = "anomalyco";
     repo = "opencode";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-ZgmRHoI3rxsSM10sA4cZu/FxqwmgawQvlW3eykXQsqQ=";
+    hash = "sha256-eM+K/JrSjM5OtDLvPAXLQQx45K15rCxkac+HA8nq5gw=";
   };
 
   node_modules = stdenvNoCC.mkDerivation {
@@ -65,7 +65,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
     dontFixup = true;
 
-    outputHash = "sha256-SsIjS+dZkx6vbH+MRKGu10RndEgvFtmJrTQsaFbBnUA=";
+    outputHash = "sha256-xnZeJp4CRpSe5oI1WbayG/W5KenEc6z3vS/EppcVMTk=";
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
   };
