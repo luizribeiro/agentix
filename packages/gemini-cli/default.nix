@@ -1,6 +1,8 @@
 { lib
 , buildNpmPackage
 , fetchFromGitHub
+, applyPatches
+, nodejs
 , jq
 , pkg-config
 , libsecret
@@ -13,15 +15,24 @@ buildNpmPackage (finalAttrs: {
   pname = "gemini-cli";
   version = "0.50.0";
 
-  src = fetchFromGitHub {
-    owner = "google-gemini";
-    repo = "gemini-cli";
-    tag = "v${finalAttrs.version}";
-    hash = "sha256-P1ZoNQx3VAx2FC5OmHOuFeOnnkHgOIRW2CVD8JbqNJ0=";
+  # Upstream tags ship a package-lock.json whose workspace edges pin exact
+  # versions the lock never resolved (e.g. tar@7.5.8 declared, 7.5.11 installed),
+  # so `npm ci` re-resolves them and fails in the offline sandbox. Realign every
+  # exact edge to the version the lock actually installed. This must happen in
+  # `src` so the npmDeps fetcher and the build see the same corrected lockfile.
+  src = applyPatches {
+    name = "gemini-cli-${finalAttrs.version}-src";
+    src = fetchFromGitHub {
+      owner = "google-gemini";
+      repo = "gemini-cli";
+      tag = "v${finalAttrs.version}";
+      hash = "sha256-P1ZoNQx3VAx2FC5OmHOuFeOnnkHgOIRW2CVD8JbqNJ0=";
+    };
+    postPatch = "${nodejs}/bin/node ${./sync-lockfile.mjs}";
   };
 
   npmDepsFetcherVersion = 2;
-  npmDepsHash = "sha256-3Wz6CWnZjM5qs1ZbLojuKGyxahdJ/4O5pyWf7xbfaaM=";
+  npmDepsHash = "sha256-oMTfXECgFSVA72uVXhHLjdYxch3ihjFswTEKNoo3TJE=";
 
   nativeBuildInputs = [
     jq
