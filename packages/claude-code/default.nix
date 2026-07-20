@@ -7,21 +7,21 @@
 }:
 
 let
-  version = "2.1.215";
+  version = "2.1.216";
   pname = "claude-code";
 
   platformInfo = {
     "aarch64-darwin" = {
       suffix = "darwin-arm64";
-      hash = "sha512-7a2z02vIgYmSikl6mmJ4f62x+wZA1pxbuszCQOlZhsxCN1rC/i7zt0mN8IJcMPz6darkg/GBRroVdk7WGHkdhQ==";
+      hash = "sha512-Gm0AShldYRsrkdW3lskH0QwsDvU93sATZXjv7HtmGisZlq3YcBV/UwJbi1F5wA/b+cVeptvznjG7A3faaPjz4Q==";
     };
     "x86_64-linux" = {
       suffix = "linux-x64";
-      hash = "sha512-zwDeTitQD3v0/GxX3hl1PTY54j7iF3/hA9QGFM95yind9hBkvLyv6aU9WdH7089s3AICfI6hZ74AFXtBRp6bzQ==";
+      hash = "sha512-BMf+Z3QM4Aj9qjA/qSYrl/JvajKxSgJUMRBnlSR4RP1qrUNWiAcWe7mljj3Au/zEv9Ahh/oi679rcqA6cTtwuQ==";
     };
     "aarch64-linux" = {
       suffix = "linux-arm64";
-      hash = "sha512-wyfnBQBkZpYKXQ2+SGqtJRqzGfm06zN94JoetsqJa8CYvCZvkzApfBRgqzsLALGBtLK7Xf13HdED+SPd1R3T9w==";
+      hash = "sha512-g2/K+v6MiIKY65SlPoFv8cRbRvroHxhvHPCf8lPDMMyRLG9fpHGGLZSR21W8OPjbqTZK8GcFcOaKrjQJrWveZw==";
     };
   };
 
@@ -37,7 +37,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
-    hash = "sha256-Glz45JFokVQmTAsvKDcb9kXN7ikDtFxJeRWGgwhQLXs=";
+    hash = "sha256-Pw9/GYGxJLH0Q3FJIowTkeyuQv2pOiU6hMdfNoRbJZ0=";
   };
 
   nativeBuildInputs = [ makeWrapper ] ++ lib.optionals stdenv.hostPlatform.isLinux [ autoPatchelfHook ];
