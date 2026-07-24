@@ -26,13 +26,13 @@ buildNpmPackage (finalAttrs: {
       owner = "google-gemini";
       repo = "gemini-cli";
       tag = "v${finalAttrs.version}";
-      hash = "sha256-P1ZoNQx3VAx2FC5OmHOuFeOnnkHgOIRW2CVD8JbqNJ0=";
+      hash = "sha256-uF2k8L8HdmgTjtCKUShwgckP5q/acqV8M+Aar8htRoE=";
     };
     postPatch = "${nodejs}/bin/node ${./sync-lockfile.mjs}";
   };
 
   npmDepsFetcherVersion = 2;
-  npmDepsHash = "sha256-uF2k8L8HdmgTjtCKUShwgckP5q/acqV8M+Aar8htRoE=";
+  npmDepsHash = "sha256-xU8c8RUtE2cTZvZ0zzYA4ypWkipXM8/jTuxjoeN7G9Y=";
 
   nativeBuildInputs = [
     jq
