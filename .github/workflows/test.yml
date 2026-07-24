@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  update-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      # nushell comes from the dev shell so CI runs the exact version
+      # flake.lock pins for local development.
+      - name: Run update-lib tests
+        run: nix develop --command nu scripts/tests/test-update-lib.nu
+
+      - name: Run update-package tests
+        run: nix develop --command nu scripts/tests/test-update-package.nu
