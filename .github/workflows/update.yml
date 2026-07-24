@@ -56,13 +56,16 @@ jobs:
       # run, and aggregate (if: always()) commits whatever succeeded.
       - name: Run update
         id: update
+        # shell: bash turns on pipefail so the tee doesn't mask the
+        # script's exit code; tee (instead of a $(...) capture) keeps
+        # the update's diagnostics in the job log even when it fails.
+        shell: bash
         run: |
-          OUTPUT=$(nu scripts/update-package.nu ${{ matrix.package }})
-          echo "$OUTPUT"
+          nu scripts/update-package.nu ${{ matrix.package }} | tee update-output.txt
           {
-            echo "updated=$(echo "$OUTPUT" | grep '^updated=' | cut -d= -f2)"
-            echo "current=$(echo "$OUTPUT" | grep '^current=' | cut -d= -f2)"
-            echo "latest=$(echo "$OUTPUT" | grep '^latest='  | cut -d= -f2)"
+            echo "updated=$(grep '^updated=' update-output.txt | cut -d= -f2)"
+            echo "current=$(grep '^current=' update-output.txt | cut -d= -f2)"
+            echo "latest=$(grep '^latest='  update-output.txt | cut -d= -f2)"
           } >> $GITHUB_OUTPUT
 
       - name: Write status JSON
