@@ -138,24 +138,25 @@ def main [
         print "Error: pass either --all or a list of package names, not both"
         exit 1
     }
-
-    let targets = if $all {
-        $all_packages
-    } else if ($packages | is-empty) {
+    if (not $all) and ($packages | is-empty) {
         print "Error: missing package argument"
         print "Usage: ./scripts/update-package.nu [--all] <package>..."
         print $"Valid packages: ($all_packages | str join ', ')"
         exit 1
-    } else {
-        for pkg in $packages {
-            if not ($pkg in $all_packages) {
-                print $"Error: Unknown package '($pkg)'"
-                print $"Valid packages: ($all_packages | str join ', ')"
-                exit 1
-            }
-        }
-        $packages
     }
+    for pkg in $packages {
+        if not ($pkg in $all_packages) {
+            print $"Error: Unknown package '($pkg)'"
+            print $"Valid packages: ($all_packages | str join ', ')"
+            exit 1
+        }
+    }
+
+    # Every branch here must stay list<string>: nushell 0.114.0 infers a
+    # `for` variable's type from the full union of the iterated value, so
+    # an `exit` branch in this `if` would widen it to
+    # oneof<nothing, list<string>> and fail loop binding at runtime.
+    let targets = if $all { $all_packages } else { $packages }
 
     let is_batch = ($targets | length) > 1
 
@@ -192,4 +193,5 @@ def main [
         print ""
         print $"($updated) updated, ($utd) up to date, ($failed) failed"
     }
+
 }
