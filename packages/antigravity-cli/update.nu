@@ -50,20 +50,23 @@ export def update-files [version: string]: nothing -> bool {
     }
     let build_id = ($parts | get ($cli_idx + 1))
 
-    mut content = (
-        open $FILE
-        | rewrite-version $version
-        | rewrite-field "buildId" $build_id
-    )
+    mut content = (open $FILE | rewrite-version $version)
+    if not ($content | field-matches? "buildId") {
+        print $"Error: buildId — field not found in ($FILE). File format may have changed."
+        return false
+    }
+    $content = ($content | rewrite-field "buildId" $build_id)
 
     for e in $entries {
         let sri = (hex-to-sri "sha512" $e.manifest.sha512)
-        let anchor = "\"" + $e.system + "\" = \\{[^}]*hash = \""
-        if not ($content | anchored-hash-matches? $anchor) {
-            print $"Error: platform hash for ($e.system) — regex did not match. File format may have changed."
+        let step = {
+            anchor: ("\"" + $e.system + "\" = \\{[^}]*hash = \"")
+            label: $"platform hash for ($e.system)"
+        }
+        if not ($content | require-hash-step $step $FILE) {
             return false
         }
-        $content = ($content | rewrite-anchored-hash $anchor $sri)
+        $content = ($content | rewrite-hash-step $step $sri)
     }
 
     $content | save -f $FILE
