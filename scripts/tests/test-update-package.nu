@@ -66,6 +66,11 @@ def main [] {
         { name: "dummy-b",  latest: "1.0.0", succeeds: true }
         { name: "dummy-ok", latest: "2.0.0", succeeds: true }
     ])
+    let failing = (make-sandbox [
+        { name: "dummy-a",    latest: "1.0.0", succeeds: true }
+        { name: "dummy-fail", latest: "2.0.0", succeeds: false }
+    ])
+
     let results = [
         (check "no arguments"
             (run-dispatcher $clean []) 1 ["missing package argument"])
@@ -81,9 +86,13 @@ def main [] {
             (run-dispatcher $clean ["dummy-a" "dummy-b"]) 0 ["2 up to date"])
         (check "--all covers every discovered package"
             (run-dispatcher $clean ["--all"]) 0 ["1 updated, 2 up to date, 0 failed"])
+        (check "failing update exits non-zero"
+            (run-dispatcher $failing ["dummy-fail"]) 1 ["Could not update dummy-fail"])
+        (check "batch with a failure exits non-zero"
+            (run-dispatcher $failing ["dummy-a" "dummy-fail"]) 1 ["1 up to date, 1 failed"])
     ]
 
-    rm -r $clean
+    rm -r $clean $failing
 
     if ($results | all {|r| $r }) {
         print "All tests passed"

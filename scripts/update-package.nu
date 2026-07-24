@@ -194,4 +194,7 @@ def main [
         print $"($updated) updated, ($utd) up to date, ($failed) failed"
     }
 
+    if ($results | where status == "failed" | is-not-empty) {
+        exit 1
+    }
 }
