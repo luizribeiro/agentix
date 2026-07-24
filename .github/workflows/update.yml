@@ -51,14 +51,11 @@ jobs:
       - name: Install Nushell
         run: nix profile install nixpkgs#nushell
 
-      # continue-on-error so a flaky per-package update (e.g. transient
-      # build failure during hash discovery) doesn't fail the matrix job
-      # and skip aggregate via needs:. We just don't upload an artifact
-      # for this package; aggregate will silently leave it on its current
-      # version and pick up the other packages.
+      # A failed update fails this matrix job so breakage is visible in
+      # the workflow status. fail-fast is off, so sibling packages still
+      # run, and aggregate (if: always()) commits whatever succeeded.
       - name: Run update
         id: update
-        continue-on-error: true
         run: |
           OUTPUT=$(nu scripts/update-package.nu ${{ matrix.package }})
           echo "$OUTPUT"
@@ -69,7 +66,7 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Write status JSON
-        if: steps.update.outputs.updated == 'true' && steps.update.outcome == 'success'
+        if: steps.update.outputs.updated == 'true'
         run: |
           mkdir -p update-result
           jq -n \
@@ -80,7 +77,7 @@ jobs:
             > update-result/${{ matrix.package }}.json
 
       - name: Upload artifact
-        if: steps.update.outputs.updated == 'true' && steps.update.outcome == 'success'
+        if: steps.update.outputs.updated == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: update-${{ matrix.package }}
