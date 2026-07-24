@@ -1,5 +1,7 @@
 # Hash discovery / format conversion helpers.
 
+use rewrite.nu *
+
 # Prefetch a tarball and return its SRI sha256.
 export def prefetch-tarball-sri [url: string]: nothing -> string {
     let result = (nix-prefetch-url $url | complete)
@@ -34,21 +36,20 @@ export def hex-to-sri [algo: string, hex: string]: nothing -> string {
     $result.stdout | str trim
 }
 
-# Build the named flake output, expect a hash mismatch on `field_name`, and
-# rewrite that field in `file` to the real hash extracted from the error
-# output. Returns the new hash (or "" on failure).
+# Build the named flake output, expect a hash mismatch on `step`'s hash,
+# and rewrite that hash in `file` to the real value extracted from the
+# error output. Returns the new hash (or "" on failure).
 export def resolve-hash-by-build [
     file: string
     package: string
-    field_name: string
-    label: string
+    step: record
 ]: nothing -> string {
-    print $"Building to get ($label)..."
+    print $"Building to get ($step.label)..."
     let build_result = (nix build $".#($package)" --no-link | complete)
     let got_lines = ($build_result.stderr | lines | where $it =~ "got:")
 
     if ($got_lines | is-empty) {
-        print $"Error: Build failed without hash mismatch for ($label). Build output:"
+        print $"Error: Build failed without hash mismatch for ($step.label). Build output:"
         print $build_result.stderr
         return ""
     }
@@ -58,19 +59,22 @@ export def resolve-hash-by-build [
     )
 
     if ($real_hash | is-empty) {
-        print $"Error: Could not extract ($label)"
+        print $"Error: Could not extract ($step.label)"
         return ""
     }
 
-    # Anchor on the 2/4-space package-level depth so we don't accidentally
-    # rewrite a same-named field inside a nested override (e.g. crush's
-    # go-toolchain pin has its own `hash = "sha256-…"` at 6-space).
+    # Field steps anchor on the 2/4-space package-level depth so we don't
+    # accidentally rewrite a same-named field inside a nested override (e.g.
+    # crush's go-toolchain pin has its own `hash = "sha256-…"` at 6-space).
+    # A hash the step can't locate must fail here rather than silently
+    # no-op — otherwise the next build step harvests this step's mismatch
+    # into the wrong field.
     let content = open $file
-    let pattern = '(?m)^( {2}| {4})' + $field_name + ' = "sha256-[^"]*"'
-    let replacement = '${1}' + $field_name + ' = "' + $real_hash + '"'
-    let updated = ($content | str replace -r $pattern $replacement)
-    $updated | save -f $file
+    if not ($content | require-hash-step $step $file) {
+        return ""
+    }
+    $content | rewrite-hash-step $step $real_hash | save -f $file
 
-    print $"✓ ($label): ($real_hash)"
+    print $"✓ ($step.label): ($real_hash)"
     $real_hash
 }

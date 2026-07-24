@@ -3,7 +3,9 @@ export const CONFIG = {
     strategy: {
         type: "multihash"
         hash_steps: [
-            { field: "hash",        label: "source hash" }
+            # The src hash nests inside applyPatches → fetchFromGitHub,
+            # below the package-level depth that field steps rewrite.
+            { anchor: 'tag = "[^"]*";\s*hash = "', label: "source hash" }
             { field: "npmDepsHash", label: "npmDepsHash" }
         ]
     }

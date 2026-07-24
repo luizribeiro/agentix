@@ -25,9 +25,11 @@
 #     # For fod:
 #     platform_suffixes = ["darwin-arm64", "linux-x64", "linux-arm64"]
 #     platform_layout   = "suffix"  # or "subpackage" (default: "suffix")
-#     # For multihash:
+#     # For multihash — field steps rewrite at package-level depth,
+#     # anchor steps rewrite wherever the anchor regex points:
 #     hash_steps = [
 #       { field = "hash",       label = "source hash" },
+#       { anchor = 'tag = "[^"]*";\s*hash = "', label = "source hash" },
 #       { field = "vendorHash", label = "vendorHash"  },
 #     ]
 

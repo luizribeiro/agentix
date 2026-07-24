@@ -25,10 +25,12 @@ export def update-fod [config: record, version: string]: nothing -> bool {
         return false
     }
 
-    open $config.file
-        | rewrite-version $version
-        | rewrite-field "hash" $sri_hash
-        | save -f $config.file
+    let src_step = { field: "hash", label: "source hash" }
+    let content = (open $config.file | rewrite-version $version)
+    if not ($content | require-hash-step $src_step $config.file) {
+        return false
+    }
+    $content | rewrite-hash-step $src_step $sri_hash | save -f $config.file
 
     let platform_layout = ($config.platform_layout? | default "suffix")
     let suffixes = ($config.platform_suffixes? | default [])
@@ -54,13 +56,15 @@ export def update-fod [config: record, version: string]: nothing -> bool {
             }
         }
 
-        let anchor = "suffix = \"" + $suffix + "\";\\s*hash = \""
+        let step = {
+            anchor: ("suffix = \"" + $suffix + "\";\\s*hash = \"")
+            label: $"platform hash for ($suffix)"
+        }
         let before = open $config.file
-        if not ($before | anchored-hash-matches? $anchor) {
-            print $"Error: platform hash for ($suffix) — regex did not match. File format may have changed."
+        if not ($before | require-hash-step $step $config.file) {
             return false
         }
-        $before | rewrite-anchored-hash $anchor $new_hash_value | save -f $config.file
+        $before | rewrite-hash-step $step $new_hash_value | save -f $config.file
     }
 
     true
@@ -71,8 +75,9 @@ export def update-fod [config: record, version: string]: nothing -> bool {
 # the real hash from nix's "got:" error line via resolve-hash-by-build.
 #
 # config: {
-#   file: string                                 — path to default.nix
-#   hash_steps: table<field: string, label: string>
+#   file: string          — path to default.nix
+#   hash_steps: list of `{ field, label }` or `{ anchor, label }` records
+#                           (see rewrite-hash-step for the two step kinds)
 # }
 #
 # Rolls back the file to its original contents if any hash step fails.
@@ -82,12 +87,15 @@ export def update-multihash [config: record, package: string, version: string]: 
 
     mut content = ($original_content | rewrite-version $version)
     for step in $config.hash_steps {
-        $content = ($content | rewrite-field $step.field $fake_hash)
+        if not ($content | require-hash-step $step $config.file) {
+            return false
+        }
+        $content = ($content | rewrite-hash-step $step $fake_hash)
     }
     $content | save -f $config.file
 
     for step in $config.hash_steps {
-        let result = (resolve-hash-by-build $config.file $package $step.field $step.label)
+        let result = (resolve-hash-by-build $config.file $package $step)
         if ($result | is-empty) {
             $original_content | save -f $config.file
             return false
