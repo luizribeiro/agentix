@@ -33,8 +33,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Lets `use update-lib *` resolve without the relative ../../ path.
-      NU_LIB_DIRS: ${{ github.workspace }}/scripts
     strategy:
       fail-fast: false
       matrix:
@@ -48,8 +46,10 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Install Nushell
-        run: nix profile install nixpkgs#nushell
+      # nushell comes from the dev shell so CI runs the exact version
+      # flake.lock pins for local development.
+      - name: Prepare dev shell
+        run: nix develop --command nu --version
 
       # A failed update fails this matrix job so breakage is visible in
       # the workflow status. fail-fast is off, so sibling packages still
@@ -61,7 +61,7 @@ jobs:
         # the update's diagnostics in the job log even when it fails.
         shell: bash
         run: |
-          nu scripts/update-package.nu ${{ matrix.package }} | tee update-output.txt
+          nix develop --command nu scripts/update-package.nu ${{ matrix.package }} | tee update-output.txt
           {
             echo "updated=$(grep '^updated=' update-output.txt | cut -d= -f2)"
             echo "current=$(grep '^current=' update-output.txt | cut -d= -f2)"
@@ -98,8 +98,6 @@ jobs:
     # when no artifacts arrived.
     if: always() && needs.discover.result == 'success'
     runs-on: ubuntu-latest
-    env:
-      NU_LIB_DIRS: ${{ github.workspace }}/scripts
     permissions:
       contents: write
     steps:
@@ -111,8 +109,10 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Install Nushell
-        run: nix profile install nixpkgs#nushell
+      # nushell comes from the dev shell so CI runs the exact version
+      # flake.lock pins for local development.
+      - name: Prepare dev shell
+        run: nix develop --command nu --version
 
       - name: Download all update artifacts
         uses: actions/download-artifact@v4
@@ -164,7 +164,7 @@ jobs:
       # straight out of each default.nix.
       - name: Regenerate README
         if: steps.apply.outputs.any-updated == 'true'
-        run: nu scripts/render-readme.nu
+        run: nix develop --command nu scripts/render-readme.nu
 
       - name: Flake check
         if: steps.apply.outputs.any-updated == 'true'
