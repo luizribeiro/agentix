@@ -5,16 +5,16 @@
 
 buildGoModule rec {
   pname = "roborev";
-  version = "0.56.0";
+  version = "0.63.0";
 
   src = fetchFromGitHub {
     owner = "roborev-dev";
     repo = "roborev";
     rev = "v${version}";
-    hash = "sha256-VSIY9v23XqX4BRhUJr/Aw8QGg1+RVDsZvK0LxTAPC4U=";
+    hash = "sha256-1EmBcNryEZA7B8lEKlVk7JSDRI/9KZj+0HusiEgZyi8=";
   };
 
-  vendorHash = "sha256-b6B4hR84k3rluvfIP8gRdJpfepiH7xKCRKblbKTHHWc=";
+  vendorHash = "sha256-lHkZ1POl+oPihDjb4a1INfeiJQ++rmN6SmE4Ko45lzI=";
 
   subPackages = [ "cmd/roborev" ];
 
