@@ -42,8 +42,8 @@ def read-nix-field [file: string, field: string]: nothing -> string {
         | default ""
 }
 
-# Read the package's own version (2-space-indent let-binding) so nested
-# `version = "…"` lines (e.g. crush's go-toolchain pin at 4-space) don't
+# Read the package's own version (2-space-indent let-binding) so a
+# `version = "…"` nested inside a sub-attrset or builder override doesn't
 # trip the regex.
 def read-version [file: string]: nothing -> string {
     open --raw $file

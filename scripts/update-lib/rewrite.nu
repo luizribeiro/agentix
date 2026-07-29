@@ -7,13 +7,12 @@
 #
 # Indent convention used for anchoring:
 #   - The package's own `version` lives at 2-space indent in the let
-#     binding. Nested `version`s (e.g. crush's go-toolchain pin inside an
-#     `overrideAttrs` block) are deeper. rewrite-version targets 2-space
-#     only.
+#     binding. A `version` nested inside a sub-attrset or a builder
+#     override sits deeper. rewrite-version targets 2-space only.
 #   - Package-level scalar fields (hash, vendorHash, npmDepsHash,
 #     outputHash, buildId, …) live at either 2-space (top-level rec body)
 #     or 4-space (inside `src = fetchurl { … }`). Nested fields inside
-#     platformInfo attrsets or overrideAttrs blocks are 6+-space.
+#     platformInfo attrsets are 6+-space.
 #     rewrite-field matches 2-or-4 only — a hash that genuinely nests
 #     deeper needs an anchor step (see rewrite-hash-step), not a wider
 #     depth regex.

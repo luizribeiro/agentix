@@ -64,8 +64,8 @@ export def resolve-hash-by-build [
     }
 
     # Field steps anchor on the 2/4-space package-level depth so we don't
-    # accidentally rewrite a same-named field inside a nested override (e.g.
-    # crush's go-toolchain pin has its own `hash = "sha256-…"` at 6-space).
+    # accidentally rewrite a same-named field nested deeper (e.g.
+    # antigravity-cli's per-platform `hash = "sha512-…"` at 6-space).
     # A hash the step can't locate must fail here rather than silently
     # no-op — otherwise the next build step harvests this step's mismatch
     # into the wrong field.
