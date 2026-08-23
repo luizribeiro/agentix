@@ -1,7 +1,7 @@
 use update-lib *
 
 export const CONFIG = {
-    source: { type: "npm", name: "@mariozechner/pi-coding-agent" }
+    source: { type: "npm", name: "@earendil-works/pi-coding-agent" }
     strategy: {
         type: "multihash"
         hash_steps: [
@@ -11,17 +11,22 @@ export const CONFIG = {
     }
 }
 
-# pi ships without a package-lock.json in its npm tarball, so we regenerate
-# one from the published tarball before letting update-multihash compute
-# npmDepsHash. Without this the build can't reproduce the node_modules tree.
+# pi's tarball ships an npm-shrinkwrap.json that omits `integrity` for its six
+# first-party @earendil-works/* packages, which fetch-npm-deps rejects. We drop
+# it and regenerate a full lockfile from the registry instead.
+#
+# npm 11 is pinned because npm 10 (from the devshell's nodejs_22) crashes with
+# "Cannot read properties of null (reading 'edgesOut')" resolving pi's nested
+# `overrides` entry.
 def regenerate-lockfile [version: string]: nothing -> bool {
     print "Regenerating packages/pi/package-lock.json..."
     let cmd = (
         "set -euo pipefail; repo_root=$(pwd); tmp=$(mktemp -d); trap 'rm -rf \"$tmp\"' EXIT; "
-        + "curl -L --fail -o \"$tmp/pi.tgz\" https://registry.npmjs.org/@mariozechner/pi-coding-agent/-/pi-coding-agent-"
+        + "curl -L --fail -o \"$tmp/pi.tgz\" https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-"
         + $version
         + ".tgz >/dev/null; tar -xzf \"$tmp/pi.tgz\" -C \"$tmp\"; cd \"$tmp/package\"; "
-        + "npm install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null; "
+        + "rm -f npm-shrinkwrap.json; "
+        + "npx -y npm@11 install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null; "
         + "cp package-lock.json \"$repo_root/packages/pi/package-lock.json\""
     )
     let result = (^bash -lc $cmd | complete)
