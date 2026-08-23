@@ -20,11 +20,13 @@ export const CONFIG = {
 # `overrides` entry.
 def regenerate-lockfile [version: string]: nothing -> bool {
     print "Regenerating packages/pi/package-lock.json..."
+    let pkg = $CONFIG.source.name
+    let tarball = $"https://registry.npmjs.org/($pkg)/-/($pkg | split row '/' | last)-($version).tgz"
     let cmd = (
         "set -euo pipefail; repo_root=$(pwd); tmp=$(mktemp -d); trap 'rm -rf \"$tmp\"' EXIT; "
-        + "curl -L --fail -o \"$tmp/pi.tgz\" https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-"
-        + $version
-        + ".tgz >/dev/null; tar -xzf \"$tmp/pi.tgz\" -C \"$tmp\"; cd \"$tmp/package\"; "
+        + "curl -L --fail -o \"$tmp/pi.tgz\" "
+        + $tarball
+        + " >/dev/null; tar -xzf \"$tmp/pi.tgz\" -C \"$tmp\"; cd \"$tmp/package\"; "
         + "rm -f npm-shrinkwrap.json; "
         + "npx -y npm@11 install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null; "
         + "cp package-lock.json \"$repo_root/packages/pi/package-lock.json\""
