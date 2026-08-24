@@ -26,7 +26,7 @@
   ldflags = [
     "-s"
     "-w"
-    "-X=github.com/roborev-dev/roborev/internal/version.Version=v${version}"
+    "-X=go.kenn.io/roborev/internal/version.Version=v${version}"
   ];
 
   meta = with lib; {
