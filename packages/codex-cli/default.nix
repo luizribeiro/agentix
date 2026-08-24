@@ -6,21 +6,21 @@
 }:
 
 let
-  version = "0.149.0";
+  version = "0.149.1";
   pname = "codex-cli";
 
   platformInfo = {
     "aarch64-darwin" = {
       suffix = "darwin-arm64";
-      hash = "sha256:0hm6jwhpa6jdvl2l8zwj81sscsfjj0d19hzbnd6zcygx1zicmsyi";
+      hash = "sha256:1lljsw3mzbxb81jvj5x05y916qnjqv5x4f3lgqkc2a85myb8n7qm";
     };
     "x86_64-linux" = {
       suffix = "linux-x64";
-      hash = "sha256:1ryhzpq2s1r3bl65whn8wypdw5zai5fhfc7xdf50bfz8dw83svz0";
+      hash = "sha256:00dlk969pmjaa8lfw0cc7b3dg6n6pd8kd4g7js3yd2rdsrg8ckvk";
     };
     "aarch64-linux" = {
       suffix = "linux-arm64";
-      hash = "sha256:01qf4ncbh4gfhc8giqkqwsfzbvy6iknskaq6frcx2n50yhr313id";
+      hash = "sha256:0cgibwa9wrb74blc9pn1dzbzm7jhjkl5spgqprhvdq24ljwdxxl1";
     };
   };
 
@@ -36,7 +36,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@openai/codex/-/codex-${version}.tgz";
-    hash = "sha256-4OWVPu8XtWDAnIE/+0FysXVXdbjFZZMEGXSU45wjnfc=";
+    hash = "sha256-FhYwT9eIO0bYiHzzNkluKuDN+aY3t734gkuqmMIsW3s=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
