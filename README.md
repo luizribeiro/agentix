@@ -19,7 +19,7 @@ Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.
 | `gemini-cli` | `gemini` | 0.56.0 | AI agent that brings the power of Gemini directly into your terminal |
 | `opencode` | `opencode` | 1.18.22 | AI coding agent built for the terminal |
 | `pi` | `pi` | 0.84.3 | pi.dev - A minimal terminal-based coding agent |
-| `roborev` | `roborev` | 0.64.0 | Continuous code review daemon for AI coding agents |
+| `roborev` | `roborev` | 0.66.0 | Continuous code review daemon for AI coding agents |
 | `default` | all | - | Combined package with all tools |
 <!-- END package-table -->
 

@@ -1,20 +1,23 @@
 { lib
 , buildGoModule
 , fetchFromGitHub
+, go_1_27
 }:
 
-buildGoModule rec {
+# Upstream's go.mod floor is above nixpkgs' default go. Drop the override
+# once nixpkgs' `go` reaches 1.27.0.
+(buildGoModule.override { go = go_1_27; }) rec {
   pname = "roborev";
-  version = "0.64.0";
+  version = "0.66.0";
 
   src = fetchFromGitHub {
     owner = "roborev-dev";
     repo = "roborev";
     rev = "v${version}";
-    hash = "sha256-DjfE50xer3qtBSWKbHo6HULxYKfD13tY4fPJ1oJO9eI=";
+    hash = "sha256-qzI2D42m+zRbFnM9anP2HifCK0EwplbPOsOpng+DHJM=";
   };
 
-  vendorHash = "sha256-/NSIdkeJrm3XSi9/KLaqEj1VrQOk+huPrWp8kxwYMCc=";
+  vendorHash = "sha256-A5ZcODNZyjMTTFI8QZqaYn0Wddr8+899R+C1n27TI1U=";
 
   subPackages = [ "cmd/roborev" ];
 
