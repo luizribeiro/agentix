@@ -3,8 +3,9 @@ export const CONFIG = {
     strategy: {
         type: "multihash"
         hash_steps: [
-            { field: "hash",       label: "source hash" }
-            { field: "vendorHash", label: "vendorHash"  }
+            { field: "hash",       label: "source hash"             }
+            { field: "outputHash", label: "node_modules outputHash" }
+            { field: "vendorHash", label: "vendorHash"              }
         ]
     }
 }
