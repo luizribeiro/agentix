@@ -2,20 +2,23 @@
 , buildGoModule
 , fetchFromGitHub
 , installShellFiles
+, go_1_27
 }:
 
-buildGoModule rec {
+# Upstream's go.mod floor is above nixpkgs' default go. Drop the override
+# once nixpkgs' `go` reaches 1.26.6.
+(buildGoModule.override { go = go_1_27; }) rec {
   pname = "crush";
-  version = "0.89.0";
+  version = "0.91.0";
 
   src = fetchFromGitHub {
     owner = "charmbracelet";
     repo = "crush";
     rev = "v${version}";
-    hash = "sha256-RTHVxyzQlB31jWNF5buGsn0phuCwOu7zTugzfcMZVp8=";
+    hash = "sha256-iuUBdY9ouyPGR0jDzrTvu7UJJfk1GIwCV8om8ZGiB+E=";
   };
 
-  vendorHash = "sha256-zY45d6TIUNmL8qriE8LQkxdOSHTEKDasbzNHeHyEbiI=";
+  vendorHash = "sha256-+UevSHf4pdKuvKkuE5YzIcwhVHpix1S78iIxVZPmxig=";
 
   nativeBuildInputs = [ installShellFiles ];
 
