@@ -56,6 +56,7 @@ stdenv.mkDerivation {
     mkdir -p $out/bin
     makeWrapper ${nodejs_22}/bin/node $out/bin/codex \
       --add-flags "$out/lib/node_modules/@openai/codex/bin/codex.js" \
+      --set CODEX_MANAGED_BY_NPM 1 \
       --set NODE_PATH "$out/lib/node_modules"
 
     runHook postInstall
