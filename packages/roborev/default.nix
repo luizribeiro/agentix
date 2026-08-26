@@ -7,13 +7,13 @@
 }:
 
 let
-  version = "0.66.0";
+  version = "0.67.0";
 
   src = fetchFromGitHub {
     owner = "roborev-dev";
     repo = "roborev";
     rev = "v${version}";
-    hash = "sha256-qzI2D42m+zRbFnM9anP2HifCK0EwplbPOsOpng+DHJM=";
+    hash = "sha256-OOKxu7xz38lw80uaIUfgbOw9nNioLU6ouP9lsGElqCg=";
   };
 
   node_modules = stdenvNoCC.mkDerivation {
