@@ -12,7 +12,7 @@ Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.
 
 | Package | Binary | Version | Description |
 |---------|--------|---------|-------------|
-| `antigravity-cli` | `agy` | 1.1.21 | Google's Antigravity CLI - terminal-based AI coding agent |
+| `antigravity-cli` | `agy` | 1.1.22 | Google's Antigravity CLI - terminal-based AI coding agent |
 | `claude-code` | `claude` | 2.1.247 | Claude Code CLI - Anthropic's official CLI for Claude |
 | `codex-cli` | `codex` | 0.150.1 | OpenAI Codex CLI tool |
 | `crush` | `crush` | 0.91.2 | The glamourous AI coding agent for your favourite terminal |
