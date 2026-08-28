@@ -6,14 +6,14 @@
 }:
 
 buildNpmPackage (finalAttrs: let
-  version = "0.84.3";
+  version = "0.84.4";
 in {
   pname = "pi";
   inherit version;
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-${version}.tgz";
-    hash = "sha256-0H3EF/eKFNrDdqh4tlVrUZYfEY95dx7jdTM9xRNWvHU=";
+    hash = "sha256-W852bRnDzroY8/uq2RxEnJ+dc5gfnjQA7O+TIAbwaWg=";
   };
 
   sourceRoot = "package";
@@ -26,7 +26,7 @@ in {
     cp ${./package-lock.json} package-lock.json
   '';
 
-  npmDepsHash = "sha256-6yfPLxA/64CvH38CJ+GcVtYciS+GgsSjDKOExxOB7PM=";
+  npmDepsHash = "sha256-rSUYLw/RoIZ2f6gMwpSUdDqGECFUnm0KnNu/uCLYbpE=";
 
   dontNpmBuild = true;
 
