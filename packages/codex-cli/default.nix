@@ -1,7 +1,6 @@
 { lib
 , stdenv
 , fetchurl
-, nodejs_22
 , makeWrapper
 }:
 
@@ -34,37 +33,44 @@ in
 stdenv.mkDerivation {
   inherit pname version;
 
-  src = fetchurl {
-    url = "https://registry.npmjs.org/@openai/codex/-/codex-${version}.tgz";
-    hash = "sha256-hwZj1OZQQt01gwXpaiKvWHCKKDF81OdKhaqGfGn1hZs=";
-  };
+  src = platformPkg;
 
   nativeBuildInputs = [ makeWrapper ];
-  buildInputs = [ nodejs_22 ];
 
   dontBuild = true;
 
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/lib/node_modules/@openai/codex
-    cp -r . $out/lib/node_modules/@openai/codex
-
+    # Install the native binary directly instead of going through the npm
+    # JS shim. The shim sets CODEX_MANAGED_BY_NPM + CODEX_MANAGED_PACKAGE_ROOT,
+    # which makes codex treat this as an npm install and show the
+    # "Update available!" prompt on startup. Running the vendored binary
+    # directly (from a path codex does not recognize as npm/brew/standalone)
+    # makes install detection fall through to "Other", which suppresses the
+    # update prompt entirely.
     mkdir -p $out/lib/node_modules/@openai/codex-${info.suffix}
     tar -xzf ${platformPkg} -C $out/lib/node_modules/@openai/codex-${info.suffix} --strip-components=1
 
+    # The platform tarball ships exactly one native binary at
+    # vendor/<rust-triple>/bin/codex. Discover it instead of hardcoding the
+    # triple so version bumps (or target renames) keep working.
+    vendor_root=$out/lib/node_modules/@openai/codex-${info.suffix}/vendor
+    vendor_bins=$(find "$vendor_root" -maxdepth 3 -type f -name codex -path '*/bin/codex')
+    if [ "$(printf '%s\n' "$vendor_bins" | wc -l)" -ne 1 ]; then
+      echo "error: expected exactly one vendor binary under $vendor_root, got: $vendor_bins" >&2
+      exit 1
+    fi
+
     mkdir -p $out/bin
-    makeWrapper ${nodejs_22}/bin/node $out/bin/codex \
-      --add-flags "$out/lib/node_modules/@openai/codex/bin/codex.js" \
-      --set CODEX_MANAGED_BY_NPM 1 \
-      --set NODE_PATH "$out/lib/node_modules"
+    makeWrapper $vendor_bins $out/bin/codex
 
     runHook postInstall
   '';
 
   meta = with lib; {
     description = "OpenAI Codex CLI tool";
-    homepage = "https://github.com/openai/openai-codex";
+    homepage = "https://github.com/openai/codex";
     license = licenses.unfree;
     maintainers = [ ];
     platforms = [ "aarch64-darwin" "x86_64-linux" "aarch64-linux" ];
