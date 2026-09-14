@@ -9,13 +9,13 @@
 # once nixpkgs' `go` reaches 1.26.6.
 (buildGoModule.override { go = go_1_27; }) rec {
   pname = "crush";
-  version = "0.94.1";
+  version = "0.94.2";
 
   src = fetchFromGitHub {
     owner = "charmbracelet";
     repo = "crush";
     rev = "v${version}";
-    hash = "sha256-RWnM6U6vv+35Uaaqztz27mU3pqtQfSg1g2aUHP85Jd4=";
+    hash = "sha256-2p1pYrq1q9Wu/P01IYn7iFXLLEkcY8dOsuKcJ0cRbTY=";
   };
 
   vendorHash = "sha256-HktSB71scE55BG3TzJyDbAV1j+T8+DDxMTAiomeLbgc=";
