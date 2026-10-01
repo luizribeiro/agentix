@@ -7,13 +7,13 @@
 }:
 
 let
-  version = "0.69.0";
+  version = "0.70.0";
 
   src = fetchFromGitHub {
     owner = "roborev-dev";
     repo = "roborev";
     rev = "v${version}";
-    hash = "sha256-nrWSBDnx44BgkLlneN3dRWt5fWmxhjga0k0W4XvedWI=";
+    hash = "sha256-Rv5tmyVrqBXqkpUztgdSjuP7eVv4dyiyGaKBpWVNWyI=";
   };
 
   node_modules = stdenvNoCC.mkDerivation {
@@ -129,7 +129,7 @@ buildGoModule' {
   pname = "roborev";
   inherit version src;
 
-  vendorHash = "sha256-85W8V+FPRxPG4BYjKG7pXxl16v+re5TGF6zLA7mf7zA=";
+  vendorHash = "sha256-huVzXEOz3IDGU1HD2K6lpIGF77uZNb5gNc0+6rRSuEk=";
 
   subPackages = [ "cmd/roborev" ];
 
