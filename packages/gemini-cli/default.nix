@@ -13,7 +13,7 @@
 
 buildNpmPackage (finalAttrs: {
   pname = "gemini-cli";
-  version = "0.62.0";
+  version = "0.63.0";
 
   # Upstream tags ship a package-lock.json whose workspace edges pin exact
   # versions the lock never resolved (e.g. tar@7.5.8 declared, 7.5.11 installed),
@@ -26,13 +26,13 @@ buildNpmPackage (finalAttrs: {
       owner = "google-gemini";
       repo = "gemini-cli";
       tag = "v${finalAttrs.version}";
-      hash = "sha256-lF+gVaZzCwsae9qGg1aPESdZjz1e+F9u/peRVvi8lno=";
+      hash = "sha256-pR6xiqLJuzj/Mt1H3UqfPdmmiOEmaKitkjLsgNdeBHg=";
     };
     postPatch = "${nodejs}/bin/node ${./sync-lockfile.mjs}";
   };
 
   npmDepsFetcherVersion = 2;
-  npmDepsHash = "sha256-XIXZQUesTh5midk9qm7e/MXMRbZgDWQ3KQhoYs9jl+I=";
+  npmDepsHash = "sha256-6pFkMCOSyhQavU2+IMrDjj0vuZfGalk//h/CvOjIrOY=";
 
   nativeBuildInputs = [
     jq
