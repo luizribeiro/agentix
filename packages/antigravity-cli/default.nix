@@ -5,22 +5,22 @@
 }:
 
 let
-  version = "1.3.0";
-  buildId = "1.3.0-6233328509124608";
+  version = "1.3.1";
+  buildId = "1.3.1-4582356770750464";
   pname = "antigravity-cli";
 
   platformInfo = {
     "aarch64-darwin" = {
       urlPath = "darwin-arm/cli_mac_arm64.tar.gz";
-      hash = "sha512-/crWhjsHqyirUjRRsXtnDxyCCvQKsrG/6taO2SeQDaA/u5Bc82L67HFWefvId1MxUI0gM3MlglUQHYWv2poctg==";
+      hash = "sha512-9EziuZNch5ZqhC9FR3sT5i4e+KIjEqsZAbGAvtiN1hX61ZQJaOgK/CZUC14C5XAbVVIUmeZMkVuj9zYzNpjWnQ==";
     };
     "x86_64-linux" = {
       urlPath = "linux-x64/cli_linux_x64.tar.gz";
-      hash = "sha512-9vXhbzVq6KNF/WqyZa0qTk3I0Lf0rDRSSdDiUKBu3Ulmd7isAZOyWJcf63zPu6L8zC9ILbHWLMZQSY41LvhSgA==";
+      hash = "sha512-O4NJ1yZ4eVuvh4hIGBXiDXrPO4D50vhnpgfnErxr5/sY/X1Pzzru5K5ZOw9GloTG00l1JPEKTEJqGivewgsfaA==";
     };
     "aarch64-linux" = {
       urlPath = "linux-arm/cli_linux_arm64.tar.gz";
-      hash = "sha512-iogFdazPKLA94A50ggncc1wR5ZhH3osTfLoHqqqxZsiSg2V0ys2aDW+h4k1uGRl9JfNrfgpJ/YTWTqhO4mqyHQ==";
+      hash = "sha512-xBuM2MUm6wQ/oLAZN3q4EJGQtUdiTxf1JVhorOec2OkZWmCse4lHgQESfv++BJNBxBCO0OrUsWCWhwSot52HmQ==";
     };
   };
 
