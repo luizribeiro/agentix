@@ -4,8 +4,6 @@
 
 `agentix` is a single Nix flake that bundles popular AI coding CLIs so you can install, run, and pin them from one place.
 
-Looking for Gondolin VM guest/assets tooling? See [gondolin-nix](https://github.com/luizribeiro/gondolin-nix).
-
 ## Available packages
 
 <!-- BEGIN package-table -->
