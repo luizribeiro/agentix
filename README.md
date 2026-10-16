@@ -12,7 +12,7 @@
 |---------|--------|---------|-------------|
 | `antigravity-cli` | `agy` | 1.4.0 | Google's Antigravity CLI - terminal-based AI coding agent |
 | `claude-code` | `claude` | 2.1.301 | Claude Code CLI - Anthropic's official CLI for Claude |
-| `codex-cli` | `codex` | 0.154.0 | OpenAI Codex CLI tool |
+| `codex-cli` | `codex` | 0.163.0 | OpenAI Codex CLI tool |
 | `crush` | `crush` | 0.98.1 | The glamourous AI coding agent for your favourite terminal |
 | `gemini-cli` | `gemini` | 0.64.0 | AI agent that brings the power of Gemini directly into your terminal |
 | `opencode` | `opencode` | 1.19.2 | AI coding agent built for the terminal |
