@@ -25,6 +25,7 @@
 #     # For fod:
 #     platform_suffixes = ["darwin-arm64", "linux-x64", "linux-arm64"]
 #     platform_layout   = "suffix"  # or "subpackage" (default: "suffix")
+#     source_hash       = false     # skip the main tarball hash (default: true)
 #     # For multihash — field steps rewrite at package-level depth,
 #     # anchor steps rewrite wherever the anchor regex points:
 #     hash_steps = [
@@ -60,6 +61,7 @@ export def update-files-from-config [cfg: record, package: string, version: stri
                 npm_name:          $cfg.source.name
                 platform_suffixes: $cfg.strategy.platform_suffixes
                 platform_layout:   $layout
+                source_hash:       ($cfg.strategy | get -o source_hash | default true)
             } $version
         }
         "multihash" => {

@@ -3,5 +3,6 @@ export const CONFIG = {
     strategy: {
         type: "fod"
         platform_suffixes: ["darwin-arm64", "linux-x64", "linux-arm64"]
+        source_hash: false
     }
 }

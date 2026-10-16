@@ -12,25 +12,22 @@ use rewrite.nu *
 #   npm_name: string                   — e.g. "@openai/codex"
 #   platform_suffixes: list<string>    — e.g. ["darwin-arm64", "linux-x64", "linux-arm64"]
 #   platform_layout?: "suffix" | "subpackage"  — defaults to "suffix"
+#   source_hash?: bool                 — pins the main npm tarball's hash;
+#                                        defaults to true. Packages that
+#                                        only fetch platform tarballs set
+#                                        it to false.
 # }
 export def update-fod [config: record, version: string]: nothing -> bool {
-    let pkg_name = ($config.npm_name | split row '/' | last)
-    let tarball_url = $"https://registry.npmjs.org/($config.npm_name)/-/($pkg_name)-($version).tgz"
-    print $"Fetching hash for ($tarball_url)..."
-
-    let sri_hash = try {
-        prefetch-tarball-sri $tarball_url
-    } catch { |e|
-        print $"Error fetching hash: ($e.msg)"
+    let versioned = (open $config.file | rewrite-version $version)
+    let content = if ($config.source_hash? | default true) {
+        $versioned | rewrite-fod-source-hash $config $version
+    } else {
+        $versioned
+    }
+    if $content == null {
         return false
     }
-
-    let src_step = { field: "hash", label: "source hash" }
-    let content = (open $config.file | rewrite-version $version)
-    if not ($content | require-hash-step $src_step $config.file) {
-        return false
-    }
-    $content | rewrite-hash-step $src_step $sri_hash | save -f $config.file
+    $content | save -f $config.file
 
     let platform_layout = ($config.platform_layout? | default "suffix")
     let suffixes = ($config.platform_suffixes? | default [])
@@ -46,7 +43,7 @@ export def update-fod [config: record, version: string]: nothing -> bool {
                 return false
             }
         } else {
-            let url = $"https://registry.npmjs.org/($config.npm_name)/-/($pkg_name)-($version)-($suffix).tgz"
+            let url = (npm-tarball-url $config.npm_name $"($version)-($suffix)")
             print $"Fetching platform hash for ($suffix)..."
             try {
                 prefetch-tarball-base32 $url
@@ -68,6 +65,31 @@ export def update-fod [config: record, version: string]: nothing -> bool {
     }
 
     true
+}
+
+def npm-tarball-url [npm_name: string, file_version: string]: nothing -> string {
+    let pkg_name = ($npm_name | split row '/' | last)
+    $"https://registry.npmjs.org/($npm_name)/-/($pkg_name)-($file_version).tgz"
+}
+
+# Returns the content with the main tarball's hash pinned, or null on failure.
+def rewrite-fod-source-hash [config: record, version: string]: string -> any {
+    let content = $in
+    let tarball_url = (npm-tarball-url $config.npm_name $version)
+    print $"Fetching hash for ($tarball_url)..."
+
+    let sri_hash = try {
+        prefetch-tarball-sri $tarball_url
+    } catch { |e|
+        print $"Error fetching hash: ($e.msg)"
+        return null
+    }
+
+    let src_step = { field: "hash", label: "source hash" }
+    if not ($content | require-hash-step $src_step $config.file) {
+        return null
+    }
+    $content | rewrite-hash-step $src_step $sri_hash
 }
 
 # Build-driven hash discovery (gemini-cli, crush, opencode, pi, roborev).

@@ -41,6 +41,21 @@ const FLAT_SRC_FIXTURE = '{
   };
 }'
 
+# Shaped like codex-cli's default.nix: only per-platform tarballs are
+# fetched, so there is no package-level source hash to rewrite.
+const PLATFORM_ONLY_FIXTURE = 'let
+  version = "0.154.0";
+  platformInfo = {
+    "x86_64-linux" = {
+      suffix = "linux-x64";
+      hash = "sha256:0aw3nfbgnc59zv9is640796lh5jzmlmc2mprwxg6hcb0ksj86z72";
+    };
+  };
+in
+{
+  pname = "codex-cli";
+}'
+
 def check [label: string, ok: bool]: nothing -> bool {
     if $ok {
         print $"✓ ($label)"
@@ -67,6 +82,26 @@ def main [] {
             { field: "npmDepsHash", label: "npmDepsHash" }
         ]
     } "gemini-cli" "9.9.9")
+
+    let fod_file = ([$sandbox "fod.nix"] | path join)
+    $PLATFORM_ONLY_FIXTURE | save -f $fod_file
+    let fod_result = (update-fod {
+        file: $fod_file
+        npm_name: "@openai/codex"
+        platform_suffixes: []
+        source_hash: false
+    } "0.163.0")
+
+    let pkg_dir = ([$sandbox "packages" "codex-cli"] | path join)
+    mkdir $pkg_dir
+    $PLATFORM_ONLY_FIXTURE | save -f ([$pkg_dir "default.nix"] | path join)
+    let runner_result = do {
+        cd $sandbox
+        update-files-from-config {
+            source: { type: "npm", name: "@openai/codex" }
+            strategy: { type: "fod", platform_suffixes: [], source_hash: false }
+        } "codex-cli" "0.163.0"
+    }
 
     let anchored_step = { anchor: $SRC_ANCHOR, label: "source hash" }
     let anchored_rewrite = ($NESTED_SRC_FIXTURE | rewrite-hash-step $anchored_step "sha256-new=")
@@ -100,6 +135,14 @@ def main [] {
             ($NESTED_SRC_FIXTURE | require-hash-step $anchored_step "default.nix"))
         (check "require-hash-step fails on unmatched steps"
             (not ($NESTED_SRC_FIXTURE | require-hash-step { field: "hash", label: "source hash" } "default.nix")))
+        (check "update-fod without source_hash succeeds on platform-only files"
+            ($fod_result == true))
+        (check "update-fod without source_hash still rewrites the version"
+            ((open $fod_file) | str contains '  version = "0.163.0"'))
+        (check "update-fod without source_hash leaves platform hashes untouched"
+            ((open $fod_file) | str contains 'hash = "sha256:0aw3nfbgnc59zv9is640796lh5jzmlmc2mprwxg6hcb0ksj86z72"'))
+        (check "update-files-from-config forwards source_hash to update-fod"
+            ($runner_result == true))
     ]
 
     rm -r $sandbox
