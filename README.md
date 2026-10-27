@@ -11,10 +11,10 @@
 | Package | Binary | Version | Description |
 |---------|--------|---------|-------------|
 | `antigravity-cli` | `agy` | 1.4.8 | Google's Antigravity CLI - terminal-based AI coding agent |
-| `claude-code` | `claude` | 2.1.311 | Claude Code CLI - Anthropic's official CLI for Claude |
-| `codex-cli` | `codex` | 0.164.0 | OpenAI Codex CLI tool |
+| `claude-code` | `claude` | 2.1.312 | Claude Code CLI - Anthropic's official CLI for Claude |
+| `codex-cli` | `codex` | 0.165.0 | OpenAI Codex CLI tool |
 | `crush` | `crush` | 0.98.2 | The glamourous AI coding agent for your favourite terminal |
-| `gemini-cli` | `gemini` | 0.65.0 | AI agent that brings the power of Gemini directly into your terminal |
+| `gemini-cli` | `gemini` | 0.66.0 | AI agent that brings the power of Gemini directly into your terminal |
 | `opencode` | `opencode` | 1.19.4 | AI coding agent built for the terminal |
 | `pi` | `pi` | 1.4.0 | pi.dev - A minimal terminal-based coding agent |
 | `roborev` | `roborev` | 0.72.0 | Continuous code review daemon for AI coding agents |
