@@ -15,7 +15,7 @@
 | `codex-cli` | `codex` | 0.165.0 | OpenAI Codex CLI tool |
 | `crush` | `crush` | 0.98.2 | The glamourous AI coding agent for your favourite terminal |
 | `gemini-cli` | `gemini` | 0.66.0 | AI agent that brings the power of Gemini directly into your terminal |
-| `opencode` | `opencode` | 1.19.4 | AI coding agent built for the terminal |
+| `opencode` | `opencode` | 1.19.5 | AI coding agent built for the terminal |
 | `pi` | `pi` | 1.4.0 | pi.dev - A minimal terminal-based coding agent |
 | `roborev` | `roborev` | 0.72.0 | Continuous code review daemon for AI coding agents |
 | `default` | all | - | Combined package with all tools |
