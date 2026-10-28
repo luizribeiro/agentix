@@ -37,7 +37,7 @@ buildNpmPackage (finalAttrs: {
   nativeBuildInputs = [
     jq
     pkg-config
-  ] ++ lib.optionals stdenv.isDarwin [ clang_20 ];
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [ clang_20 ];
 
   buildInputs = [
     ripgrep
