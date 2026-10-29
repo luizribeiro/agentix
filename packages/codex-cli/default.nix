@@ -5,21 +5,21 @@
 }:
 
 let
-  version = "0.165.0";
+  version = "0.166.0";
   pname = "codex-cli";
 
   platformInfo = {
     "aarch64-darwin" = {
       suffix = "darwin-arm64";
-      hash = "sha256:15qgba59146jd3n86i048xwbis5gfkfma6r2s3j2lvbbrfmv14d9";
+      hash = "sha256:19cwwv3y2yl3jyh8i76xif94ff990zr6v6cwd05wmgnxibd2w78q";
     };
     "x86_64-linux" = {
       suffix = "linux-x64";
-      hash = "sha256:12lvdzxnb6p9qm077y9j1wkn2r2aga22xj6kkkhjcwcqympcv5zr";
+      hash = "sha256:14zx0702nxh8wc5bqxdind4y7w8ym3w9325yqkpwxqnhsck0mh6b";
     };
     "aarch64-linux" = {
       suffix = "linux-arm64";
-      hash = "sha256:1brv8x2yv5afja8nxlirfd3z5qy0cic5nlmqw6pri0arwc45i5f9";
+      hash = "sha256:1kba81alayxzp9n3clskbnrsn9pv4ndp24wxadngqr3q750fhi4h";
     };
   };
 
