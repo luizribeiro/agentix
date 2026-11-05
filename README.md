@@ -10,7 +10,7 @@
 
 | Package | Binary | Version | Description |
 |---------|--------|---------|-------------|
-| `antigravity-cli` | `agy` | 1.5.0 | Google's Antigravity CLI - terminal-based AI coding agent |
+| `antigravity-cli` | `agy` | 1.5.1 | Google's Antigravity CLI - terminal-based AI coding agent |
 | `claude-code` | `claude` | 2.1.318 | Claude Code CLI - Anthropic's official CLI for Claude |
 | `codex-cli` | `codex` | 0.166.0 | OpenAI Codex CLI tool |
 | `crush` | `crush` | 0.99.0 | The glamourous AI coding agent for your favourite terminal |
