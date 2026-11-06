@@ -2,6 +2,13 @@
 
 > Your AI agents, packaged with Nix.
 
+> [!IMPORTANT]
+> **agentix is deprecated and archived.** Use
+> [numtide/llm-agents.nix](https://github.com/numtide/llm-agents.nix) instead.
+> It packages the same agents (claude-code, codex, gemini-cli, pi, opencode,
+> crush, antigravity-cli and many more), updates them daily, and serves
+> prebuilt binaries from `cache.numtide.com`.
+
 `agentix` is a single Nix flake that bundles popular AI coding CLIs so you can install, run, and pin them from one place.
 
 ## Available packages
